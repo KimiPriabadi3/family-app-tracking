@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import 'screens/profile_select_screen.dart';
 import 'services/notification_service.dart';
+import 'theme/register_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -17,8 +18,12 @@ class FamilyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Family App',
-      theme: ThemeData(colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal)),
+      title: 'Family App Tracking',
+      // Ships as a debug build, and the corner ribbon has no business on a
+      // phone the family actually uses.
+      debugShowCheckedModeBanner: false,
+      theme: buildRegisterTheme(brightness: Brightness.light),
+      darkTheme: buildRegisterTheme(brightness: Brightness.dark),
       home: const SessionGate(),
     );
   }

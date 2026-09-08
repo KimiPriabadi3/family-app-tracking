@@ -11,10 +11,11 @@ import '../models/profile.dart';
 /// stream getters and write through the mutation methods below rather
 /// than touching `FirebaseFirestore` directly.
 class FirestoreService {
-  FirestoreService._();
-  static final instance = FirestoreService._();
+  /// Swappable so screens can be rendered against canned data without a
+  /// live Firebase connection.
+  static FirestoreService instance = FirestoreService();
 
-  final _db = FirebaseFirestore.instance;
+  FirebaseFirestore get _db => FirebaseFirestore.instance;
 
   CollectionReference<Map<String, dynamic>> get _profiles => _db.collection('profiles');
   CollectionReference<Map<String, dynamic>> get _events => _db.collection('calendar_events');

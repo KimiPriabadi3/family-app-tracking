@@ -15,12 +15,12 @@ class TasksScreen extends StatelessWidget {
       length: 2,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Tugas'),
+          title: const Text('TUGAS'),
           actions: [AdminAction(profileId: profileId)],
           bottom: const TabBar(
             tabs: [
-              Tab(text: 'Piket Rumah'),
-              Tab(text: 'Titip Beli'),
+              Tab(text: 'PIKET RUMAH'),
+              Tab(text: 'TITIP BELI'),
             ],
           ),
         ),

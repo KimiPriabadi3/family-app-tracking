@@ -8,7 +8,7 @@ enum ProfileId { bunda, aku, adek }
 /// Firestore on first run and to render the profile picker.
 const Map<String, String> kDefaultProfileNames = {
   'bunda': 'Bunda',
-  'aku': 'Aku',
+  'aku': 'Mas',
   'adek': 'Adek',
 };
 

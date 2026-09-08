@@ -1,3 +1,6 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
@@ -11,8 +14,8 @@ plugins {
 // secrets.properties.example to secrets.properties and fill in your key.
 val secretsFile = rootProject.file("secrets.properties")
 val mapsApiKey: String = if (secretsFile.exists()) {
-    val props = java.util.Properties()
-    secretsFile.inputStream().use { props.load(it) }
+    val props = Properties()
+    FileInputStream(secretsFile).use { stream -> props.load(stream) }
     props.getProperty("MAPS_API_KEY") ?: ""
 } else {
     ""
