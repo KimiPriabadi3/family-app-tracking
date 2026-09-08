@@ -60,3 +60,4 @@ secrets.properties
 
 # Names the Firebase project, kept private for the same reason
 .firebaserc
+android/.kotlin/
