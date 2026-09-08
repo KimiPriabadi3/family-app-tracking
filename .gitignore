@@ -55,3 +55,6 @@ android/app/google-services.json
 # Local Google Maps API key
 android/key.properties
 secrets.properties
+
+# Names the Firebase project, kept private for the same reason
+.firebaserc
