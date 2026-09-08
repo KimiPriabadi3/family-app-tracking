@@ -12,6 +12,20 @@ Dibuat karena hal-hal kecil sehari-hari ("kamu di mana?", "token listrik habis",
 
 Install langsung dari file APK-nya (perlu izinkan "install dari sumber tidak dikenal" sekali di HP).
 
+## Tampilan
+
+Rumah tangga ditampilkan sebagai **register Kartu Keluarga**: tiap anggota satu baris bernomor dengan tinta sendiri, tiap keadaan satu kolom yang dicap beserta jamnya. Keadaan yang lewat 12 jam diarsir sendiri dan ditandai "belum diperbarui", supaya kabar semalam tidak dikira masih berlaku.
+
+| Kartu Keluarga | Kalender | Piket rumah |
+|---|---|---|
+| ![Kartu Keluarga](test/preview/02-kartu-keluarga.png) | ![Kalender](test/preview/03-kalender.png) | ![Piket](test/preview/05-piket.png) |
+
+| Pengumuman | Titip beli | Mode gelap |
+|---|---|---|
+| ![Pengumuman](test/preview/04-pengumuman.png) | ![Titip beli](test/preview/06-titip-beli.png) | ![Gelap](test/preview/09-kartu-keluarga-gelap.png) |
+
+Gambar-gambar itu bukan mockup — semuanya dirender langsung dari widget aplikasi lewat `flutter test --update-goldens test/design_preview_test.dart`, memakai data contoh.
+
 ## Fitur
 
 - **Kalender** — tiap anggota mengisi jadwalnya di tanggal tertentu, yang lain bisa lihat.
