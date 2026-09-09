@@ -8,9 +8,12 @@ Dibuat karena hal-hal kecil sehari-hari ("kamu di mana?", "token listrik habis",
 
 | Target | Cara dapat |
 |---|---|
+| Browser | Coba dulu tanpa memasang apa pun — [buka demo](https://kimipriabadi3.github.io/family-app-tracking/) |
 | Android | APK, debug signed — [latest release](../../releases/latest), file `family-app-tracking.apk` |
 
-Install langsung dari file APK-nya (perlu izinkan "install dari sumber tidak dikenal" sekali di HP).
+Install APK langsung dari filenya (perlu izinkan "install dari sumber tidak dikenal" sekali di HP).
+
+Demonya berjalan di atas data karangan yang hidup di tab kamu sendiri: semua tombol berfungsi, tapi tidak menyentuh data keluarga yang asli dan hilang begitu halaman ditutup. Di sana ada pemilih **Lihat sebagai Bunda / Mas / Adek**, jadi kamu bisa merasakan tampilan yang sama dari HP yang berbeda — termasuk melihat menu Admin yang hanya muncul untuk satu orang.
 
 ## Tampilan
 
