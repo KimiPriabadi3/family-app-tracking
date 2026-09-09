@@ -14,11 +14,13 @@ Install langsung dari file APK-nya (perlu izinkan "install dari sumber tidak dik
 
 ## Tampilan
 
-Rumah tangga ditampilkan sebagai **register Kartu Keluarga**: tiap anggota satu baris bernomor dengan tinta sendiri, tiap keadaan satu kolom yang dicap beserta jamnya. Keadaan yang lewat 12 jam diarsir sendiri dan ditandai "belum diperbarui", supaya kabar semalam tidak dikira masih berlaku.
+Hangat dan lembut, bukan formulir: kartu membulat berbayang halus di atas latar krem, palet koral–kuning–tosca, dan satu warna khas per anggota yang dipakai konsisten di semua layar — jadi warna saja sudah memberi tahu ini punya siapa.
 
-| Kartu Keluarga | Kalender | Piket rumah |
+Satu detail yang paling berguna sehari-hari: **status menua sendiri**. Yang baru diisi tampil pekat, yang sudah lebih dari 12 jam memudar dan waktunya berubah merah, supaya kabar semalam tidak dikira masih berlaku.
+
+| Keluarga | Kalender | Piket rumah |
 |---|---|---|
-| ![Kartu Keluarga](test/preview/02-kartu-keluarga.png) | ![Kalender](test/preview/03-kalender.png) | ![Piket](test/preview/05-piket.png) |
+| ![Keluarga](test/preview/02-kartu-keluarga.png) | ![Kalender](test/preview/03-kalender.png) | ![Piket](test/preview/05-piket.png) |
 
 | Pengumuman | Titip beli | Mode gelap |
 |---|---|---|
