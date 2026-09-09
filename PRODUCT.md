@@ -73,12 +73,13 @@ Constraints:
   are honest UI affordances among trusted family, not enforced boundaries.
 - Free Firebase (Spark) plan. Push notifications are not built yet; everything
   updates live in-app instead.
-- The map screen ships without a Google Maps API key, which requires a billing
-  account the family has not set up. The feature stays in place and renders an
-  empty map area until a key is added — it must not be removed.
+- The map uses OpenStreetMap tiles rather than Google Maps, a decision made to
+  avoid attaching a payment card: Google requires a billing account even inside
+  its free tier, and the published APK would then carry a key worth stealing.
+  OSM's tile policy covers this volume, and its attribution is displayed on the
+  map as that policy requires.
 
-Undecided: whether push notifications are ever added; whether the map is
-activated.
+Undecided: whether push notifications are ever added.
 
 ## Brand Commitments
 

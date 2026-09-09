@@ -1,6 +1,3 @@
-import java.io.FileInputStream
-import java.util.Properties
-
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
@@ -8,17 +5,6 @@ plugins {
     // Requires android/app/google-services.json from the Firebase console
     // (Project settings > Your apps > Android app) before the app will build.
     id("com.google.gms.google-services")
-}
-
-// Kept out of git so the key never lands in the public repo. Copy
-// secrets.properties.example to secrets.properties and fill in your key.
-val secretsFile = rootProject.file("secrets.properties")
-val mapsApiKey: String = if (secretsFile.exists()) {
-    val props = Properties()
-    FileInputStream(secretsFile).use { stream -> props.load(stream) }
-    props.getProperty("MAPS_API_KEY") ?: ""
-} else {
-    ""
 }
 
 android {
@@ -43,7 +29,6 @@ android {
         // flag during build.
         versionCode = flutter.versionCode
         versionName = flutter.versionName
-        manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
     }
 
     buildTypes {

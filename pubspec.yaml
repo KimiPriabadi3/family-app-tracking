@@ -40,9 +40,11 @@ dependencies:
   cloud_firestore: ^5.6.0
   firebase_messaging: ^15.1.6
 
-  # Location & maps
+  # Location & maps. OpenStreetMap tiles need no API key and no billing
+  # account, which keeps the published APK free of anything worth stealing.
   geolocator: ^13.0.2
-  google_maps_flutter: ^2.10.0
+  flutter_map: ^8.3.2
+  latlong2: ^0.9.1
 
   # UI
   table_calendar: ^3.1.3

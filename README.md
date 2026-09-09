@@ -39,7 +39,9 @@ Tidak ada login akun — tiap HP cukup memilih "kamu siapa" sekali, lalu diingat
 
 ## Stack
 
-Flutter (Android) · Cloud Firestore · Google Maps · Firebase Cloud Messaging
+Flutter (Android) · Cloud Firestore · OpenStreetMap lewat `flutter_map` · Firebase Cloud Messaging
+
+Peta sengaja memakai OpenStreetMap, bukan Google Maps: tidak butuh API key dan tidak butuh akun penagihan, jadi APK yang dibagikan tidak membawa kredensial apa pun yang bisa disalahgunakan.
 
 ## Menjalankan sendiri
 
@@ -47,7 +49,8 @@ App ini terhubung ke project Firebase pribadi, jadi konfigurasinya tidak ikut di
 
 1. Buat project Firebase, tambahkan app Android dengan package `com.keluarga.family_app`, lalu simpan `google-services.json` ke `android/app/`.
 2. Aktifkan Cloud Firestore, lalu deploy aturan dari `firestore.rules`.
-3. Buat Google Maps API key (Maps SDK for Android), salin `android/secrets.properties.example` menjadi `android/secrets.properties`, lalu isi `MAPS_API_KEY`.
-4. `flutter pub get` lalu `flutter run`.
+3. `flutter pub get` lalu `flutter run`.
+
+Tidak ada kunci peta yang perlu diisi.
 
 > Catatan keamanan: karena app ini tanpa autentikasi, aturan Firestore-nya memang longgar — cocok untuk 3 anggota keluarga yang saling percaya, bukan untuk data yang perlu dijaga dari publik. Karena itu `google-services.json` sengaja tidak dimasukkan ke repo.

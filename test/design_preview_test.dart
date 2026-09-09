@@ -42,6 +42,14 @@ void main() {
     ]);
     await _loadFont('MaterialIcons', ['materialicons-regular.otf']);
     FirestoreService.instance = _CannedFirestore(now: now, today: today);
+
+    // flutter_map asks path_provider for a tile cache directory, which has no
+    // implementation in a widget test.
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+      const MethodChannel('plugins.flutter.io/path_provider'),
+      (call) async => Directory.systemTemp.path,
+    );
   });
 
   Future<void> preview(
@@ -130,6 +138,9 @@ class _CannedFirestore extends FirestoreService {
       statusNote: 'Masak dulu, nanti ke pasar',
       statusUpdatedAt: now.subtract(const Duration(minutes: 8)),
       locationSharingEnabled: true,
+      lastLatitude: -6.2349,
+      lastLongitude: 106.9896,
+      lastLocationAt: now.subtract(const Duration(minutes: 6)),
     ),
     Profile(
       id: 'aku',
