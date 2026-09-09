@@ -4,11 +4,10 @@ import '../models/job_assignment.dart';
 import '../models/job_template.dart';
 import '../models/profile.dart';
 import '../services/firestore_service.dart';
-import '../theme/register_theme.dart';
-import '../widgets/register.dart';
+import '../theme/app_theme.dart';
+import '../widgets/soft.dart';
 
-/// The amendment page: only the admin reaches it, and only to edit the duty
-/// list and set who holds each turn this week.
+/// Admin-only: edit the chore list and set who holds each turn this week.
 class AdminScreen extends StatelessWidget {
   final String profileId;
 
@@ -19,24 +18,21 @@ class AdminScreen extends StatelessWidget {
     final saved = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('TAMBAH PEKERJAAN'),
+        title: const Text('Tambah pekerjaan'),
         content: TextField(
           controller: controller,
           textCapitalization: TextCapitalization.sentences,
-          decoration: const InputDecoration(
-            labelText: 'Nama pekerjaan',
-            hintText: 'misal: sapu rumah',
-          ),
+          decoration: const InputDecoration(hintText: 'misal: sapu rumah'),
           autofocus: true,
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('BATAL'),
+            child: const Text('Batal'),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('TAMBAH'),
+            child: const Text('Tambah'),
           ),
         ],
       ),
@@ -60,38 +56,42 @@ class AdminScreen extends StatelessWidget {
         return SafeArea(
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                color: scheme.primary,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                child: FieldLabel('Giliran ${job.name}', color: scheme.onPrimary),
-              ),
-              for (final p in profiles)
-                InkWell(
-                  onTap: () => Navigator.pop(sheetContext, p.id),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      border: Border(bottom: BorderSide(color: scheme.outline)),
-                    ),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            p.name,
-                            style: RegisterType.value.copyWith(
-                              color: RegisterInk.forMember(context, p.id),
-                            ),
-                          ),
-                        ),
-                        if (p.id == currentId)
-                          FieldLabel('sekarang', color: scheme.primary),
-                      ],
-                    ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 4, 24, 12),
+                child: Text(
+                  'Siapa yang ${job.name.toLowerCase()}?',
+                  style: TextStyle(
+                    fontSize: 19,
+                    fontWeight: FontWeight.w700,
+                    color: scheme.onSurface,
                   ),
                 ),
+              ),
+              for (final p in profiles)
+                ListTile(
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+                  leading: MemberAvatar(
+                    profileId: p.id,
+                    name: p.name,
+                    size: 40,
+                  ),
+                  title: Text(
+                    p.name,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: scheme.onSurface,
+                    ),
+                  ),
+                  trailing: p.id == currentId
+                      ? Icon(Icons.check_circle_rounded, color: scheme.primary)
+                      : null,
+                  onTap: () => Navigator.pop(sheetContext, p.id),
+                ),
+              const SizedBox(height: 12),
             ],
           ),
         );
@@ -112,11 +112,11 @@ class AdminScreen extends StatelessWidget {
     final weekStart = JobAssignment.weekStartFor(DateTime.now());
 
     return Scaffold(
-      appBar: AppBar(title: const Text('ADMIN')),
+      appBar: AppBar(title: const Text('Admin')),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _addJob(context),
-        icon: const Icon(Icons.add),
-        label: const Text('PEKERJAAN'),
+        icon: const Icon(Icons.add_rounded),
+        label: const Text('Pekerjaan'),
       ),
       body: StreamBuilder<List<Profile>>(
         stream: FirestoreService.instance.watchProfiles(),
@@ -135,49 +135,42 @@ class AdminScreen extends StatelessWidget {
                       a.jobTemplateId: a.assignedProfileId,
                   };
                   if (templates.isEmpty) {
-                    return const RegisterEmpty(
-                      'Belum ada pekerjaan.\nTekan tombol di bawah untuk menambah.',
+                    return const SoftEmpty(
+                      icon: Icons.playlist_add_rounded,
+                      message:
+                          'Belum ada pekerjaan.\nTekan tombol di bawah untuk menambah.',
                     );
                   }
                   return ListView(
-                    padding: const EdgeInsets.only(bottom: 96),
+                    padding: const EdgeInsets.only(bottom: 100),
                     children: [
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(12, 16, 12, 0),
-                        child: FieldLabel('Daftar piket dan giliran minggu ini'),
+                      const SectionHeading(
+                        icon: Icons.repeat_rounded,
+                        title: 'Giliran minggu ini',
                       ),
-                      RegisterSheet(
-                        child: Column(
-                          children: [
-                            const RegisterHeaderStrip(
-                              columns: ['Pekerjaan', 'Giliran', ''],
-                              flex: [4, 3, 2],
-                            ),
-                            for (var i = 0; i < templates.length; i++)
-                              _AdminJobRow(
-                                job: templates[i],
-                                assignedId: assigned[templates[i].id],
-                                profiles: profiles,
-                                last: i == templates.length - 1,
-                                onAssign: () => _assign(
-                                  context,
-                                  templates[i],
-                                  profiles,
-                                  weekStart,
-                                  assigned[templates[i].id],
-                                ),
-                                onDelete: () => FirestoreService.instance
-                                    .deleteJobTemplate(templates[i].id),
-                              ),
-                          ],
+                      for (final job in templates)
+                        _AdminJobCard(
+                          job: job,
+                          assignedId: assigned[job.id],
+                          profiles: profiles,
+                          onAssign: () => _assign(
+                            context,
+                            job,
+                            profiles,
+                            weekStart,
+                            assigned[job.id],
+                          ),
+                          onDelete: () => FirestoreService.instance
+                              .deleteJobTemplate(job.id),
                         ),
-                      ),
                       Padding(
-                        padding: const EdgeInsets.fromLTRB(12, 16, 12, 0),
+                        padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
                         child: Text(
                           'Jadwal orang lain dibatalkan langsung dari tab Kalender.',
-                          style: RegisterType.annotation
-                              .copyWith(color: scheme.onSurfaceVariant),
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: scheme.onSurfaceVariant,
+                          ),
                         ),
                       ),
                     ],
@@ -192,19 +185,17 @@ class AdminScreen extends StatelessWidget {
   }
 }
 
-class _AdminJobRow extends StatelessWidget {
+class _AdminJobCard extends StatelessWidget {
   final JobTemplate job;
   final String? assignedId;
   final List<Profile> profiles;
-  final bool last;
   final VoidCallback onAssign;
   final VoidCallback onDelete;
 
-  const _AdminJobRow({
+  const _AdminJobCard({
     required this.job,
     required this.assignedId,
     required this.profiles,
-    required this.last,
     required this.onAssign,
     required this.onDelete,
   });
@@ -217,53 +208,65 @@ class _AdminJobRow extends StatelessWidget {
       if (p.id == assignedId) assignedName = p.name;
     }
 
-    return Container(
-      decoration: BoxDecoration(
-        border: last ? null : Border(bottom: BorderSide(color: scheme.outline)),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            flex: 4,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(12, 16, 8, 16),
-              child: Text(
-                job.name,
-                style: RegisterType.value.copyWith(color: scheme.onSurface),
-              ),
-            ),
-          ),
-          Expanded(
-            flex: 3,
-            child: InkWell(
-              onTap: onAssign,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                child: assignedName == null
-                    ? FieldLabel('atur giliran', color: scheme.error)
-                    : Text(
-                        assignedName,
-                        style: RegisterType.valueStrong.copyWith(
-                          fontSize: 15,
-                          color: RegisterInk.forMember(context, assignedId!),
-                        ),
+    return SoftCard(
+      padding: EdgeInsets.zero,
+      child: InkWell(
+        onTap: onAssign,
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(18, 14, 8, 14),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      job.name,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: scheme.onSurface,
                       ),
+                    ),
+                    const SizedBox(height: 8),
+                    if (assignedName == null)
+                      SoftPill(
+                        text: 'Ketuk untuk atur',
+                        color: scheme.error,
+                        icon: Icons.touch_app_rounded,
+                      )
+                    else
+                      Row(
+                        children: [
+                          MemberAvatar(
+                            profileId: assignedId!,
+                            name: assignedName,
+                            size: 26,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            assignedName,
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.forMember(context, assignedId!),
+                            ),
+                          ),
+                        ],
+                      ),
+                  ],
+                ),
               ),
-            ),
-          ),
-          InkWell(
-            onTap: onDelete,
-            child: Container(
-              width: 72,
-              height: 56,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                border: Border(left: BorderSide(color: scheme.outline)),
+              IconButton(
+                tooltip: 'Hapus pekerjaan',
+                onPressed: onDelete,
+                icon: Icon(Icons.delete_outline_rounded,
+                    color: scheme.onSurfaceVariant),
               ),
-              child: FieldLabel('Hapus', color: scheme.onSurfaceVariant),
-            ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

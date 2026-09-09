@@ -4,13 +4,12 @@ import '../models/announcement.dart';
 import '../models/profile.dart';
 import '../services/firestore_service.dart';
 import '../services/profile_session.dart';
-import '../theme/register_theme.dart';
+import '../theme/app_theme.dart';
 import '../utils/relative_time.dart';
 import '../widgets/admin_action.dart';
-import '../widgets/register.dart';
+import '../widgets/soft.dart';
 
-/// Notices posted to the household record. Newest sits at the top of the
-/// sheet, each one signed by the member's own ink.
+/// Short notes everyone should see, newest first.
 class AnnouncementScreen extends StatelessWidget {
   final String profileId;
 
@@ -21,12 +20,11 @@ class AnnouncementScreen extends StatelessWidget {
     final saved = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('TULIS PENGUMUMAN'),
+        title: const Text('Tulis pengumuman'),
         content: TextField(
           controller: controller,
           textCapitalization: TextCapitalization.sentences,
           decoration: const InputDecoration(
-            labelText: 'Isi pengumuman',
             hintText: 'misal: token listrik habis',
           ),
           autofocus: true,
@@ -37,11 +35,11 @@ class AnnouncementScreen extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('BATAL'),
+            child: const Text('Batal'),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('TEMPEL'),
+            child: const Text('Tempel'),
           ),
         ],
       ),
@@ -57,28 +55,19 @@ class AnnouncementScreen extends StatelessWidget {
     ));
   }
 
-  Future<void> _confirmRemove(BuildContext context, Announcement item) async {
-    final messenger = ScaffoldMessenger.of(context);
-    await FirestoreService.instance.deleteAnnouncement(item.id);
-    messenger.showSnackBar(
-      const SnackBar(content: Text('Pengumuman dicabut dari papan.')),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     final isAdmin = ProfileSession.isAdmin(profileId);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('PAPAN PENGUMUMAN'),
+        title: const Text('Pengumuman'),
         actions: [AdminAction(profileId: profileId)],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _post(context),
-        icon: const Icon(Icons.push_pin_outlined),
-        label: const Text('TEMPEL'),
+        icon: const Icon(Icons.campaign_rounded),
+        label: const Text('Tempel'),
       ),
       body: StreamBuilder<List<Profile>>(
         stream: FirestoreService.instance.watchProfiles(),
@@ -94,42 +83,23 @@ class AnnouncementScreen extends StatelessWidget {
               }
               final items = snapshot.data ?? const <Announcement>[];
               if (items.isEmpty) {
-                return const RegisterEmpty(
-                  'Papan masih kosong.\nTempel sesuatu yang perlu diketahui semua orang.',
+                return const SoftEmpty(
+                  icon: Icons.campaign_rounded,
+                  message:
+                      'Belum ada pengumuman.\nTempel sesuatu yang perlu diketahui semua orang.',
                 );
               }
               return ListView(
-                padding: const EdgeInsets.only(bottom: 96),
+                padding: const EdgeInsets.only(top: 8, bottom: 100),
                 children: [
-                  RegisterSheet(
-                    child: Column(
-                      children: [
-                        const RegisterHeaderStrip(
-                          columns: ['Isi pengumuman'],
-                          flex: [1],
-                        ),
-                        for (var i = 0; i < items.length; i++)
-                          _NoticeRow(
-                            item: items[i],
-                            authorName: names[items[i].authorProfileId] ??
-                                items[i].authorProfileId,
-                            canRemove:
-                                isAdmin || items[i].authorProfileId == profileId,
-                            onRemove: () => _confirmRemove(context, items[i]),
-                            last: i == items.length - 1,
-                          ),
-                      ],
+                  for (final item in items)
+                    _NoticeCard(
+                      item: item,
+                      authorName:
+                          names[item.authorProfileId] ?? item.authorProfileId,
+                      canRemove:
+                          isAdmin || item.authorProfileId == profileId,
                     ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 16, 12, 0),
-                    child: Text(
-                      'Yang menempel boleh mencabut pengumumannya sendiri.',
-                      style: RegisterType.annotation.copyWith(
-                        color: scheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ),
                 ],
               );
             },
@@ -140,76 +110,67 @@ class AnnouncementScreen extends StatelessWidget {
   }
 }
 
-class _NoticeRow extends StatelessWidget {
+class _NoticeCard extends StatelessWidget {
   final Announcement item;
   final String authorName;
   final bool canRemove;
-  final VoidCallback onRemove;
-  final bool last;
 
-  const _NoticeRow({
+  const _NoticeCard({
     required this.item,
     required this.authorName,
     required this.canRemove,
-    required this.onRemove,
-    required this.last,
   });
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final ink = RegisterInk.forMember(context, item.authorProfileId);
+    final color = AppColors.forMember(context, item.authorProfileId);
 
-    return Container(
-      decoration: BoxDecoration(
-        border: last ? null : Border(bottom: BorderSide(color: scheme.outline)),
-      ),
-      child: IntrinsicHeight(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Container(width: 6, color: ink),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(12, 14, 8, 14),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item.message,
-                      style: RegisterType.value.copyWith(color: scheme.onSurface),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        FieldLabel(authorName, color: ink),
-                        const SizedBox(width: 8),
-                        Text(
-                          formatRelativeTime(item.createdAt),
-                          style: RegisterType.annotation.copyWith(
-                            color: scheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
+    return SoftCard(
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            item.message,
+            style: TextStyle(
+              fontSize: 16,
+              height: 1.4,
+              color: scheme.onSurface,
             ),
-            if (canRemove)
-              InkWell(
-                onTap: onRemove,
-                child: Container(
-                  width: 72,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    border: Border(left: BorderSide(color: scheme.outline)),
-                  ),
-                  child: FieldLabel('Cabut', color: scheme.onSurfaceVariant),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              MemberAvatar(
+                profileId: item.authorProfileId,
+                name: authorName,
+                size: 30,
+              ),
+              const SizedBox(width: 9),
+              Text(
+                authorName,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: color,
                 ),
               ),
-          ],
-        ),
+              const SizedBox(width: 8),
+              Text(
+                formatRelativeTime(item.createdAt),
+                style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
+              ),
+              const Spacer(),
+              if (canRemove)
+                TextButton(
+                  onPressed: () => FirestoreService.instance
+                      .deleteAnnouncement(item.id),
+                  child: const Text('Cabut'),
+                ),
+            ],
+          ),
+        ],
       ),
     );
   }

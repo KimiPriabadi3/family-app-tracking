@@ -1,4 +1,4 @@
-@Tags(['preview'])
+﻿@Tags(['preview'])
 library;
 
 import 'dart:io';
@@ -22,7 +22,7 @@ import 'package:family_app/screens/profile_select_screen.dart';
 import 'package:family_app/screens/status_screen.dart';
 import 'package:family_app/screens/tasks_screen.dart';
 import 'package:family_app/services/firestore_service.dart';
-import 'package:family_app/theme/register_theme.dart';
+import 'package:family_app/theme/app_theme.dart';
 
 /// Renders every screen against canned data so the design can be reviewed
 /// without a device attached. Run with:
@@ -63,7 +63,7 @@ void main() {
 
     await tester.pumpWidget(MaterialApp(
       debugShowCheckedModeBanner: false,
-      theme: buildRegisterTheme(brightness: Brightness.light),
+      theme: buildAppTheme(brightness: Brightness.light),
       home: screen,
     ));
     await tester.pumpAndSettle();
@@ -89,7 +89,7 @@ void main() {
     addTearDown(tester.view.reset);
     await tester.pumpWidget(MaterialApp(
       debugShowCheckedModeBanner: false,
-      theme: buildRegisterTheme(brightness: Brightness.dark),
+      theme: buildAppTheme(brightness: Brightness.dark),
       home: const StatusScreen(profileId: 'aku'),
     ));
     await tester.pumpAndSettle();
@@ -107,7 +107,7 @@ class _ErrandHost extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('TUGAS · TITIP BELI')),
+      appBar: AppBar(title: const Text('Titip beli')),
       body: const ErrandListScreen(profileId: 'aku'),
     );
   }

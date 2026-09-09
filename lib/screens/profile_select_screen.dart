@@ -3,12 +3,11 @@ import 'package:flutter/material.dart';
 import '../models/profile.dart';
 import '../services/firestore_service.dart';
 import '../services/profile_session.dart';
-import '../theme/register_theme.dart';
-import '../widgets/register.dart';
+import '../theme/app_theme.dart';
+import '../widgets/soft.dart';
 import 'home_screen.dart';
 
-/// There is no login. This phone simply claims one row of the family card,
-/// and remembers it.
+/// No login — this phone just says who is holding it, once.
 class ProfileSelectScreen extends StatefulWidget {
   const ProfileSelectScreen({super.key});
 
@@ -35,63 +34,53 @@ class _ProfileSelectScreenState extends State<ProfileSelectScreen> {
 
     return Scaffold(
       body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+        child: ListView(
+          padding: const EdgeInsets.only(top: 40),
           children: [
-            Container(
-              color: scheme.primary,
-              padding: const EdgeInsets.fromLTRB(20, 28, 20, 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  FieldLabel('Kartu keluarga', color: scheme.onPrimary),
-                  const SizedBox(height: 10),
-                  Text(
-                    'Kamu yang mana?',
-                    style: TextStyle(
-                      color: scheme.onPrimary,
-                      fontSize: 30,
-                      height: 1.1,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'HP ini akan mengingat barismu. Tidak ada kata sandi.',
-                    style: RegisterType.annotation.copyWith(
-                      color: scheme.onPrimary.withValues(alpha: 0.85),
-                    ),
-                  ),
-                ],
+            Padding(
+              padding: const EdgeInsets.fromLTRB(28, 0, 28, 8),
+              child: Container(
+                width: 68,
+                height: 68,
+                decoration: BoxDecoration(
+                  color: scheme.primary.withValues(alpha: 0.14),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.favorite_rounded,
+                    size: 34, color: scheme.primary),
               ),
             ),
-            Expanded(
-              child: ListView(
-                padding: EdgeInsets.zero,
-                children: [
-                  RegisterSheet(
-                    child: Column(
-                      children: [
-                        const RegisterHeaderStrip(
-                          columns: ['No.', 'Nama'],
-                          flex: [1, 6],
-                        ),
-                        for (var i = 0; i < entries.length; i++)
-                          _ClaimRow(
-                            number: i + 1,
-                            profileId: entries[i].key,
-                            name: entries[i].value,
-                            busy: _claiming != null,
-                            claiming: _claiming == entries[i].key,
-                            last: i == entries.length - 1,
-                            onTap: () => _select(entries[i].key),
-                          ),
-                      ],
-                    ),
-                  ),
-                ],
+            Padding(
+              padding: const EdgeInsets.fromLTRB(28, 12, 28, 6),
+              child: Text(
+                'Halo! Kamu siapa?',
+                style: TextStyle(
+                  fontSize: 30,
+                  height: 1.15,
+                  fontWeight: FontWeight.w700,
+                  color: scheme.onSurface,
+                ),
               ),
             ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(28, 0, 28, 26),
+              child: Text(
+                'HP ini akan mengingat pilihanmu. Tidak perlu kata sandi.',
+                style: TextStyle(
+                  fontSize: 15,
+                  height: 1.4,
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+            for (final e in entries)
+              _ClaimCard(
+                profileId: e.key,
+                name: e.value,
+                busy: _claiming != null,
+                claiming: _claiming == e.key,
+                onTap: () => _select(e.key),
+              ),
           ],
         ),
       ),
@@ -99,64 +88,64 @@ class _ProfileSelectScreenState extends State<ProfileSelectScreen> {
   }
 }
 
-class _ClaimRow extends StatelessWidget {
-  final int number;
+class _ClaimCard extends StatelessWidget {
   final String profileId;
   final String name;
   final bool busy;
   final bool claiming;
-  final bool last;
   final VoidCallback onTap;
 
-  const _ClaimRow({
-    required this.number,
+  const _ClaimCard({
     required this.profileId,
     required this.name,
     required this.busy,
     required this.claiming,
-    required this.last,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final ink = RegisterInk.forMember(context, profileId);
+    final color = AppColors.forMember(context, profileId);
 
-    return InkWell(
-      onTap: busy ? null : onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          border: last ? null : Border(bottom: BorderSide(color: scheme.outline)),
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 18),
-        child: Row(
-          children: [
-            SerialBand(number: number, ink: ink),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Text(
-                name,
-                style: RegisterType.valueStrong.copyWith(color: ink, fontSize: 22),
+    return SoftCard(
+      padding: EdgeInsets.zero,
+      child: InkWell(
+        onTap: busy ? null : onTap,
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Row(
+            children: [
+              MemberAvatar(profileId: profileId, name: name, size: 52),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  name,
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                    color: scheme.onSurface,
+                  ),
+                ),
               ),
-            ),
-            if (claiming)
-              const SizedBox(
-                width: 18,
-                height: 18,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
-            else
-              FieldLabel('pilih baris ini', color: scheme.onSurfaceVariant),
-          ],
+              if (claiming)
+                const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              else
+                Icon(Icons.arrow_forward_rounded, color: color),
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-/// Routes to the picker or straight to the card if this phone already claimed
-/// a row.
+/// Routes to the picker, or straight in if this phone already chose.
 class SessionGate extends StatefulWidget {
   const SessionGate({super.key});
 

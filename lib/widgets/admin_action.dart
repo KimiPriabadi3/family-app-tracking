@@ -1,4 +1,4 @@
-import 'package:animations/animations.dart';
+﻿import 'package:animations/animations.dart';
 import 'package:flutter/material.dart';
 
 import '../screens/admin_screen.dart';
@@ -15,7 +15,7 @@ class AdminAction extends StatelessWidget {
   Widget build(BuildContext context) {
     if (!ProfileSession.isAdmin(profileId)) return const SizedBox.shrink();
     return IconButton(
-      icon: const Icon(Icons.edit_note),
+      icon: const Icon(Icons.tune_rounded),
       tooltip: 'Admin',
       onPressed: () => Navigator.of(context).push(
         PageRouteBuilder(

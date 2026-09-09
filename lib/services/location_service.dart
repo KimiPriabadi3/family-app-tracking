@@ -9,8 +9,9 @@ import 'firestore_service.dart';
 /// app is in the foreground — there is no background service yet, so a
 /// member's location only updates while they have the app open.
 class LocationService {
-  LocationService._();
-  static final instance = LocationService._();
+  /// Swappable so the public demo can leave the browser's location prompt
+  /// alone.
+  static LocationService instance = LocationService();
 
   StreamSubscription<Position>? _positionSub;
 

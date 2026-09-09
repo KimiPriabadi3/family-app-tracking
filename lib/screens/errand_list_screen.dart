@@ -4,12 +4,11 @@ import '../models/errand_item.dart';
 import '../models/profile.dart';
 import '../services/firestore_service.dart';
 import '../services/profile_session.dart';
-import '../theme/register_theme.dart';
-import '../widgets/register.dart';
+import '../theme/app_theme.dart';
+import '../widgets/soft.dart';
 
-/// The shopping list, kept as a register rather than a checklist: nothing is
-/// removed when it is bought, it is struck and filed below with the name of
-/// whoever bought it, so a request never quietly disappears.
+/// The shopping list. Bought things stay on the list, struck through and
+/// credited, so a request never quietly disappears.
 class ErrandListScreen extends StatelessWidget {
   final String profileId;
 
@@ -20,24 +19,21 @@ class ErrandListScreen extends StatelessWidget {
     final saved = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('TITIP BELI'),
+        title: const Text('Titip beli'),
         content: TextField(
           controller: controller,
           textCapitalization: TextCapitalization.sentences,
-          decoration: const InputDecoration(
-            labelText: 'Barang',
-            hintText: 'misal: susu UHT',
-          ),
+          decoration: const InputDecoration(hintText: 'misal: susu UHT'),
           autofocus: true,
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('BATAL'),
+            child: const Text('Batal'),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('TITIPKAN'),
+            child: const Text('Titipkan'),
           ),
         ],
       ),
@@ -55,15 +51,14 @@ class ErrandListScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     final isAdmin = ProfileSession.isAdmin(profileId);
 
     return Scaffold(
       backgroundColor: Colors.transparent,
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _add(context),
-        icon: const Icon(Icons.add_shopping_cart_outlined),
-        label: const Text('TITIP'),
+        icon: const Icon(Icons.add_shopping_cart_rounded),
+        label: const Text('Titip'),
       ),
       body: StreamBuilder<List<Profile>>(
         stream: FirestoreService.instance.watchProfiles(),
@@ -79,66 +74,45 @@ class ErrandListScreen extends StatelessWidget {
               }
               final items = snapshot.data ?? const <ErrandItem>[];
               if (items.isEmpty) {
-                return const RegisterEmpty(
-                  'Belum ada titipan.\nTulis apa yang perlu dibeli, siapa pun yang '
-                  'keluar bisa mencentangnya.',
+                return const SoftEmpty(
+                  icon: Icons.shopping_basket_rounded,
+                  message:
+                      'Belum ada titipan.\nTulis apa yang perlu dibeli, siapa pun yang keluar bisa mencentangnya.',
                 );
               }
               final pending = items.where((e) => !e.done).toList();
               final bought = items.where((e) => e.done).toList();
 
               return ListView(
-                padding: const EdgeInsets.only(bottom: 96),
+                padding: const EdgeInsets.only(bottom: 100),
                 children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 16, 12, 0),
-                    child: FieldLabel(
-                      pending.isEmpty
-                          ? 'Semua titipan sudah dibeli'
-                          : '${pending.length} barang belum dibeli',
-                    ),
+                  SectionHeading(
+                    icon: Icons.shopping_basket_rounded,
+                    title: pending.isEmpty
+                        ? 'Semua sudah dibeli'
+                        : '${pending.length} barang belum dibeli',
                   ),
-                  if (pending.isNotEmpty)
-                    RegisterSheet(
-                      child: Column(
-                        children: [
-                          const RegisterHeaderStrip(
-                            columns: ['Barang · dititip oleh'],
-                            flex: [1],
-                          ),
-                          for (var i = 0; i < pending.length; i++)
-                            _ErrandRow(
-                              item: pending[i],
-                              names: names,
-                              profileId: profileId,
-                              canRemove: isAdmin ||
-                                  pending[i].requestedByProfileId == profileId,
-                              last: i == pending.length - 1,
-                            ),
-                        ],
-                      ),
+                  for (final item in pending)
+                    _ErrandCard(
+                      item: item,
+                      names: names,
+                      profileId: profileId,
+                      canRemove:
+                          isAdmin || item.requestedByProfileId == profileId,
                     ),
                   if (bought.isNotEmpty) ...[
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(12, 24, 12, 0),
-                      child: FieldLabel('Sudah dibeli',
-                          color: scheme.onSurfaceVariant),
+                    const SectionHeading(
+                      icon: Icons.check_circle_rounded,
+                      title: 'Sudah dibeli',
                     ),
-                    RegisterSheet(
-                      child: Column(
-                        children: [
-                          for (var i = 0; i < bought.length; i++)
-                            _ErrandRow(
-                              item: bought[i],
-                              names: names,
-                              profileId: profileId,
-                              canRemove: isAdmin ||
-                                  bought[i].requestedByProfileId == profileId,
-                              last: i == bought.length - 1,
-                            ),
-                        ],
+                    for (final item in bought)
+                      _ErrandCard(
+                        item: item,
+                        names: names,
+                        profileId: profileId,
+                        canRemove:
+                            isAdmin || item.requestedByProfileId == profileId,
                       ),
-                    ),
                   ],
                 ],
               );
@@ -150,111 +124,107 @@ class ErrandListScreen extends StatelessWidget {
   }
 }
 
-class _ErrandRow extends StatelessWidget {
+class _ErrandCard extends StatelessWidget {
   final ErrandItem item;
   final Map<String, String> names;
   final String profileId;
   final bool canRemove;
-  final bool last;
 
-  const _ErrandRow({
+  const _ErrandCard({
     required this.item,
     required this.names,
     required this.profileId,
     required this.canRemove,
-    required this.last,
   });
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final requesterInk = RegisterInk.forMember(context, item.requestedByProfileId);
     final requester =
         names[item.requestedByProfileId] ?? item.requestedByProfileId;
     final buyer = item.doneByProfileId == null
         ? null
         : names[item.doneByProfileId] ?? item.doneByProfileId;
 
-    return Container(
-      decoration: BoxDecoration(
-        border: last ? null : Border(bottom: BorderSide(color: scheme.outline)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          InkWell(
-            onTap: () => FirestoreService.instance
-                .setErrandDone(item.id, !item.done, profileId),
-            child: Container(
-              width: 52,
-              height: 60,
-              alignment: Alignment.center,
-              child: Container(
-                width: 22,
-                height: 22,
+    return SoftCard(
+      padding: EdgeInsets.zero,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        onTap: () => FirestoreService.instance
+            .setErrandDone(item.id, !item.done, profileId),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 14, 8, 14),
+          child: Row(
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeOutCubic,
+                width: 26,
+                height: 26,
                 decoration: BoxDecoration(
+                  color: item.done ? scheme.primary : Colors.transparent,
                   border: Border.all(
                     color: item.done ? scheme.primary : scheme.outline,
                     width: 2,
                   ),
-                  color: item.done ? scheme.primary : null,
+                  borderRadius: BorderRadius.circular(9),
                 ),
                 child: item.done
-                    ? Icon(Icons.check, size: 16, color: scheme.onPrimary)
+                    ? Icon(Icons.check_rounded,
+                        size: 18, color: scheme.onPrimary)
                     : null,
               ),
-            ),
-          ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    item.name,
-                    style: RegisterType.value.copyWith(
-                      color: item.done
-                          ? scheme.onSurfaceVariant
-                          : scheme.onSurface,
-                      decoration:
-                          item.done ? TextDecoration.lineThrough : null,
-                      decorationThickness: 2,
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.name,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: item.done
+                            ? scheme.onSurfaceVariant
+                            : scheme.onSurface,
+                        decoration:
+                            item.done ? TextDecoration.lineThrough : null,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      FieldLabel(requester, color: requesterInk),
-                      if (buyer != null) ...[
-                        const SizedBox(width: 8),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        MemberAvatar(
+                          profileId: item.requestedByProfileId,
+                          name: requester,
+                          size: 22,
+                        ),
+                        const SizedBox(width: 7),
                         Text(
-                          'dibeli $buyer',
-                          style: RegisterType.annotation
-                              .copyWith(color: scheme.onSurfaceVariant),
+                          buyer == null
+                              ? 'dititip $requester'
+                              : 'dititip $requester · dibeli $buyer',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: scheme.onSurfaceVariant,
+                          ),
                         ),
                       ],
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-          if (canRemove)
-            InkWell(
-              onTap: () =>
-                  FirestoreService.instance.deleteErrandItem(item.id),
-              child: Container(
-                width: 72,
-                height: 60,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  border: Border(left: BorderSide(color: scheme.outline)),
+                    ),
+                  ],
                 ),
-                child: FieldLabel('Hapus', color: scheme.onSurfaceVariant),
               ),
-            ),
-        ],
+              if (canRemove)
+                IconButton(
+                  tooltip: 'Hapus',
+                  onPressed: () =>
+                      FirestoreService.instance.deleteErrandItem(item.id),
+                  icon: Icon(Icons.close_rounded,
+                      size: 20, color: scheme.onSurfaceVariant),
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }

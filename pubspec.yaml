@@ -38,7 +38,6 @@ dependencies:
   # Backend
   firebase_core: ^3.8.0
   cloud_firestore: ^5.6.0
-  firebase_messaging: ^15.1.6
 
   # Location & maps. OpenStreetMap tiles need no API key and no billing
   # account, which keeps the published APK free of anything worth stealing.

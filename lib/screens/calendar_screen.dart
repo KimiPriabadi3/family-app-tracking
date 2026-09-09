@@ -5,13 +5,12 @@ import '../models/calendar_event.dart';
 import '../models/profile.dart';
 import '../services/firestore_service.dart';
 import '../services/profile_session.dart';
-import '../theme/register_theme.dart';
+import '../theme/app_theme.dart';
 import '../widgets/admin_action.dart';
-import '../widgets/register.dart';
+import '../widgets/soft.dart';
 
-/// Commitments entered against a date. A cancelled entry is never deleted from
-/// the record — it is struck in stamp red, so everyone can see it was called
-/// off rather than never written.
+/// Everyone's commitments on a shared calendar. A cancelled plan stays on the
+/// day, struck through, so "batal" never looks the same as "never happened".
 class CalendarScreen extends StatefulWidget {
   final String profileId;
 
@@ -30,8 +29,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
     'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
   ];
 
-  /// table_calendar labels its columns from the device locale, which leaves an
-  /// Indonesian household reading "Sun Mon Tue". Named here instead.
+  /// table_calendar names its columns from the device locale, which would
+  /// leave an Indonesian household reading "Sun Mon Tue".
   static const _weekdays = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
 
   String _dateLine(DateTime d) => '${d.day} ${_months[d.month - 1]} ${d.year}';
@@ -43,7 +42,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final saved = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: Text('ISI ${_dateLine(_selectedDay).toUpperCase()}'),
+        title: Text(_dateLine(_selectedDay)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -51,17 +50,17 @@ class _CalendarScreenState extends State<CalendarScreen> {
               controller: titleController,
               textCapitalization: TextCapitalization.sentences,
               decoration: const InputDecoration(
-                labelText: 'Urusan',
+                labelText: 'Ada urusan apa?',
                 hintText: 'misal: rapat kantor',
               ),
               autofocus: true,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
             TextField(
               controller: noteController,
               textCapitalization: TextCapitalization.sentences,
               decoration: const InputDecoration(
-                labelText: 'Keterangan (boleh dikosongkan)',
+                labelText: 'Keterangan (boleh dilewati)',
               ),
             ),
           ],
@@ -69,11 +68,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('BATAL'),
+            child: const Text('Batal'),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('CATAT'),
+            child: const Text('Simpan'),
           ),
         ],
       ),
@@ -97,13 +96,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('KALENDER'),
+        title: const Text('Kalender'),
         actions: [AdminAction(profileId: widget.profileId)],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _addEntry(context),
-        icon: const Icon(Icons.edit_outlined),
-        label: const Text('CATAT'),
+        icon: const Icon(Icons.edit_calendar_rounded),
+        label: const Text('Catat'),
       ),
       body: StreamBuilder<List<Profile>>(
         stream: FirestoreService.instance.watchProfiles(),
@@ -122,9 +121,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
               }
 
               return ListView(
-                padding: const EdgeInsets.only(bottom: 96),
+                padding: const EdgeInsets.only(top: 8, bottom: 100),
                 children: [
-                  RegisterSheet(
+                  SoftCard(
+                    padding: const EdgeInsets.fromLTRB(8, 12, 8, 12),
                     child: TableCalendar<String>(
                       firstDay: DateTime.now().subtract(const Duration(days: 365)),
                       lastDay: DateTime.now().add(const Duration(days: 365)),
@@ -139,57 +139,60 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       availableGestures: AvailableGestures.horizontalSwipe,
                       headerStyle: HeaderStyle(
                         formatButtonVisible: false,
-                        titleCentered: false,
+                        titleCentered: true,
                         titleTextFormatter: (date, locale) =>
                             '${_months[date.month - 1]} ${date.year}',
-                        headerPadding:
-                            const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                        titleTextStyle: RegisterType.label.copyWith(
-                          fontSize: 13,
+                        titleTextStyle: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
                           color: scheme.onSurface,
                         ),
-                        leftChevronIcon:
-                            Icon(Icons.chevron_left, color: scheme.onSurfaceVariant),
-                        rightChevronIcon:
-                            Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
-                        decoration: BoxDecoration(
-                          border: Border(bottom: BorderSide(color: scheme.outline)),
-                        ),
+                        leftChevronIcon: Icon(Icons.chevron_left_rounded,
+                            color: scheme.onSurfaceVariant),
+                        rightChevronIcon: Icon(Icons.chevron_right_rounded,
+                            color: scheme.onSurfaceVariant),
                       ),
                       daysOfWeekStyle: DaysOfWeekStyle(
                         dowTextFormatter: (date, locale) =>
                             _weekdays[date.weekday % 7],
-                        weekdayStyle: RegisterType.label
-                            .copyWith(fontSize: 10, color: scheme.onSurfaceVariant),
-                        weekendStyle: RegisterType.label
-                            .copyWith(fontSize: 10, color: scheme.error),
-                        decoration: BoxDecoration(
-                          border: Border(bottom: BorderSide(color: scheme.outline)),
+                        weekdayStyle: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: scheme.onSurfaceVariant,
+                        ),
+                        weekendStyle: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: scheme.primary,
                         ),
                       ),
                       calendarStyle: CalendarStyle(
-                        cellMargin: const EdgeInsets.all(5),
-                        defaultDecoration: const BoxDecoration(),
-                        weekendDecoration: const BoxDecoration(),
-                        outsideDecoration: const BoxDecoration(),
+                        cellMargin: const EdgeInsets.all(4),
                         todayDecoration: BoxDecoration(
-                          border: Border.all(color: scheme.primary, width: 1.5),
+                          color: scheme.primary.withValues(alpha: 0.16),
+                          shape: BoxShape.circle,
                         ),
-                        selectedDecoration: BoxDecoration(color: scheme.primary),
-                        selectedTextStyle: RegisterType.value.copyWith(
+                        selectedDecoration: BoxDecoration(
+                          color: scheme.primary,
+                          shape: BoxShape.circle,
+                        ),
+                        selectedTextStyle: TextStyle(
                           color: scheme.onPrimary,
                           fontWeight: FontWeight.w700,
+                          fontSize: 15,
                         ),
-                        todayTextStyle: RegisterType.value.copyWith(
+                        todayTextStyle: TextStyle(
                           color: scheme.onSurface,
                           fontWeight: FontWeight.w700,
+                          fontSize: 15,
                         ),
                         defaultTextStyle:
-                            RegisterType.value.copyWith(color: scheme.onSurface),
+                            TextStyle(color: scheme.onSurface, fontSize: 15),
                         weekendTextStyle:
-                            RegisterType.value.copyWith(color: scheme.error),
-                        outsideTextStyle: RegisterType.value.copyWith(
+                            TextStyle(color: scheme.primary, fontSize: 15),
+                        outsideTextStyle: TextStyle(
                           color: scheme.onSurfaceVariant.withValues(alpha: 0.5),
+                          fontSize: 15,
                         ),
                       ),
                       calendarBuilders: CalendarBuilders<String>(
@@ -197,16 +200,20 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           if (owners.isEmpty) return null;
                           final seen = owners.toSet().toList();
                           return Padding(
-                            padding: const EdgeInsets.only(bottom: 4),
+                            padding: const EdgeInsets.only(bottom: 6),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 for (final id in seen)
                                   Container(
                                     width: 6,
-                                    height: 3,
-                                    margin: const EdgeInsets.symmetric(horizontal: 1),
-                                    color: RegisterInk.forMember(context, id),
+                                    height: 6,
+                                    margin: const EdgeInsets.symmetric(
+                                        horizontal: 1.5),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.forMember(context, id),
+                                      shape: BoxShape.circle,
+                                    ),
                                   ),
                               ],
                             ),
@@ -215,12 +222,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       ),
                     ),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 20, 12, 8),
-                    child: FieldLabel(
-                      'Isi ${_dateLine(_selectedDay)}',
-                      color: scheme.onSurfaceVariant,
-                    ),
+                  SectionHeading(
+                    icon: Icons.event_note_rounded,
+                    title: _dateLine(_selectedDay),
                   ),
                   _DayEntries(
                     day: _selectedDay,
@@ -250,7 +254,6 @@ class _DayEntries extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     final isAdmin = ProfileSession.isAdmin(profileId);
 
     return StreamBuilder<List<CalendarEvent>>(
@@ -258,116 +261,105 @@ class _DayEntries extends StatelessWidget {
       builder: (context, snapshot) {
         final events = snapshot.data ?? const <CalendarEvent>[];
         if (events.isEmpty) {
-          return const RegisterEmpty('Tidak ada urusan tercatat di tanggal ini.');
+          return const SoftEmpty(
+            icon: Icons.event_available_rounded,
+            message: 'Tidak ada urusan tercatat di tanggal ini.',
+          );
         }
-        return RegisterSheet(
-          margin: const EdgeInsets.symmetric(horizontal: 12),
-          child: Column(
-            children: [
-              const RegisterHeaderStrip(
-                columns: ['Nama', 'Urusan', ''],
-                flex: [2, 4, 3],
+        return Column(
+          children: [
+            for (final event in events)
+              _EntryCard(
+                event: event,
+                ownerName:
+                    names[event.ownerProfileId] ?? event.ownerProfileId,
+                canCancel: isAdmin || event.ownerProfileId == profileId,
               ),
-              for (var i = 0; i < events.length; i++)
-                _EntryRow(
-                  event: events[i],
-                  ownerName: names[events[i].ownerProfileId] ??
-                      events[i].ownerProfileId,
-                  canCancel: isAdmin || events[i].ownerProfileId == profileId,
-                  last: i == events.length - 1,
-                  outline: scheme.outline,
-                ),
-            ],
-          ),
+          ],
         );
       },
     );
   }
 }
 
-class _EntryRow extends StatelessWidget {
+class _EntryCard extends StatelessWidget {
   final CalendarEvent event;
   final String ownerName;
   final bool canCancel;
-  final bool last;
-  final Color outline;
 
-  const _EntryRow({
+  const _EntryCard({
     required this.event,
     required this.ownerName,
     required this.canCancel,
-    required this.last,
-    required this.outline,
   });
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final ink = RegisterInk.forMember(context, event.ownerProfileId);
     final cancelled = event.cancelled;
 
-    return Container(
-      decoration: BoxDecoration(
-        border: last ? null : Border(bottom: BorderSide(color: outline)),
-      ),
-      padding: const EdgeInsets.fromLTRB(12, 14, 6, 14),
+    return SoftCard(
+      padding: const EdgeInsets.fromLTRB(16, 16, 10, 16),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            flex: 2,
-            child: Text(
-              ownerName,
-              style: RegisterType.label.copyWith(color: ink, fontSize: 12),
-            ),
+          MemberAvatar(
+            profileId: event.ownerProfileId,
+            name: ownerName,
+            size: 40,
           ),
+          const SizedBox(width: 13),
           Expanded(
-            flex: 4,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   event.title,
-                  style: RegisterType.value.copyWith(
-                    color: cancelled ? scheme.error : scheme.onSurface,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: cancelled
+                        ? scheme.onSurfaceVariant
+                        : scheme.onSurface,
                     decoration: cancelled ? TextDecoration.lineThrough : null,
-                    decorationColor: scheme.error,
-                    decorationThickness: 2,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  ownerName,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.forMember(context, event.ownerProfileId),
                   ),
                 ),
                 if (event.note != null && event.note!.isNotEmpty) ...[
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 6),
                   Text(
                     event.note!,
-                    style: RegisterType.annotation.copyWith(
+                    style: TextStyle(
+                      fontSize: 13,
+                      height: 1.35,
                       color: scheme.onSurfaceVariant,
                     ),
                   ),
                 ],
                 if (cancelled) ...[
-                  const SizedBox(height: 6),
-                  FieldLabel('dibatalkan', color: scheme.error),
+                  const SizedBox(height: 10),
+                  SoftPill(
+                    text: 'Dibatalkan',
+                    color: scheme.error,
+                    icon: Icons.cancel_rounded,
+                  ),
                 ],
               ],
             ),
           ),
-          Expanded(
-            flex: 3,
-            child: canCancel && !cancelled
-                ? Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton(
-                      onPressed: () =>
-                          FirestoreService.instance.cancelEvent(event.id),
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        visualDensity: VisualDensity.compact,
-                      ),
-                      child: const Text('BATALKAN', maxLines: 1),
-                    ),
-                  )
-                : const SizedBox.shrink(),
-          ),
+          if (canCancel && !cancelled)
+            TextButton(
+              onPressed: () => FirestoreService.instance.cancelEvent(event.id),
+              child: const Text('Batalkan'),
+            ),
         ],
       ),
     );

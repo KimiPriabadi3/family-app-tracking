@@ -53,11 +53,31 @@ class _HomeScreenState extends State<HomeScreen> {
           _index = i;
         }),
         destinations: const [
-          NavigationDestination(icon: Icon(Icons.badge_outlined), label: 'Kartu'),
-          NavigationDestination(icon: Icon(Icons.event_note_outlined), label: 'Kalender'),
-          NavigationDestination(icon: Icon(Icons.campaign_outlined), label: 'Pengumuman'),
-          NavigationDestination(icon: Icon(Icons.checklist_outlined), label: 'Tugas'),
-          NavigationDestination(icon: Icon(Icons.place_outlined), label: 'Peta'),
+          NavigationDestination(
+            icon: Icon(Icons.people_outline_rounded),
+            selectedIcon: Icon(Icons.people_rounded),
+            label: 'Keluarga',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.calendar_today_outlined),
+            selectedIcon: Icon(Icons.calendar_month_rounded),
+            label: 'Kalender',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.campaign_outlined),
+            selectedIcon: Icon(Icons.campaign_rounded),
+            label: 'Pengumuman',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.checklist_outlined),
+            selectedIcon: Icon(Icons.checklist_rounded),
+            label: 'Tugas',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.place_outlined),
+            selectedIcon: Icon(Icons.place_rounded),
+            label: 'Peta',
+          ),
         ],
       ),
     );

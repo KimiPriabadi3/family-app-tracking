@@ -1,14 +1,12 @@
-import 'package:firebase_core/firebase_core.dart';
+﻿import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 
 import 'screens/profile_select_screen.dart';
-import 'services/notification_service.dart';
-import 'theme/register_theme.dart';
+import 'theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
-  await NotificationService.instance.init();
   runApp(const FamilyApp());
 }
 
@@ -22,8 +20,8 @@ class FamilyApp extends StatelessWidget {
       // Ships as a debug build, and the corner ribbon has no business on a
       // phone the family actually uses.
       debugShowCheckedModeBanner: false,
-      theme: buildRegisterTheme(brightness: Brightness.light),
-      darkTheme: buildRegisterTheme(brightness: Brightness.dark),
+      theme: buildAppTheme(brightness: Brightness.light),
+      darkTheme: buildAppTheme(brightness: Brightness.dark),
       home: const SessionGate(),
     );
   }
