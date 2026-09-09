@@ -31,12 +31,26 @@ class FirestoreService {
         (snap) => snap.docs.map(Profile.fromDoc).toList());
   }
 
-  Future<void> updateStatus(String profileId, PresenceStatus status, {String? note}) {
+  Future<void> updateStatus(
+    String profileId,
+    PresenceStatus status, {
+    String? note,
+    StatusSource source = StatusSource.manual,
+  }) {
     return _profiles.doc(profileId).set({
       'status': status.name,
       'statusNote': note,
       'statusUpdatedAt': Timestamp.now(),
+      'statusSource': source.name,
     }, SetOptions(merge: true));
+  }
+
+  /// One-shot read, for the geofence and polling isolates where a live stream
+  /// would be the wrong shape.
+  Future<Profile?> getProfile(String profileId) async {
+    final snap = await _profiles.doc(profileId).get();
+    if (!snap.exists) return null;
+    return Profile.fromDoc(snap);
   }
 
   Future<void> setLocationSharing(String profileId, bool enabled) {

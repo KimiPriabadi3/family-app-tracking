@@ -178,22 +178,21 @@ class DemoFirestore extends FirestoreService {
   Stream<List<Profile>> watchProfiles() => _seeded(_profileStream, _profiles);
 
   @override
-  Future<void> updateStatus(String profileId, PresenceStatus status,
-      {String? note}) async {
+  Future<void> updateStatus(
+    String profileId,
+    PresenceStatus status, {
+    String? note,
+    StatusSource source = StatusSource.manual,
+  }) async {
     _profiles = [
       for (final p in _profiles)
         if (p.id == profileId)
-          Profile(
-            id: p.id,
-            name: p.name,
-            isAdmin: p.isAdmin,
+          p.copyWith(
             status: status,
             statusNote: note,
+            clearStatusNote: note == null,
             statusUpdatedAt: DateTime.now(),
-            lastLatitude: p.lastLatitude,
-            lastLongitude: p.lastLongitude,
-            lastLocationAt: p.lastLocationAt,
-            locationSharingEnabled: p.locationSharingEnabled,
+            statusSource: source,
           )
         else
           p,
@@ -202,17 +201,19 @@ class DemoFirestore extends FirestoreService {
   }
 
   @override
+  Future<Profile?> getProfile(String profileId) async {
+    for (final p in _profiles) {
+      if (p.id == profileId) return p;
+    }
+    return null;
+  }
+
+  @override
   Future<void> setLocationSharing(String profileId, bool enabled) async {
     _profiles = [
       for (final p in _profiles)
         if (p.id == profileId)
-          Profile(
-            id: p.id,
-            name: p.name,
-            isAdmin: p.isAdmin,
-            status: p.status,
-            statusNote: p.statusNote,
-            statusUpdatedAt: p.statusUpdatedAt,
+          p.copyWith(
             lastLatitude: p.lastLatitude ?? -6.2349,
             lastLongitude: p.lastLongitude ?? 106.9896,
             lastLocationAt: DateTime.now(),

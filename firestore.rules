@@ -14,9 +14,12 @@ service cloud.firestore {
       allow write: if profileId in ['bunda', 'aku', 'adek']
         && request.resource.data.keys().hasOnly([
           'name', 'isAdmin', 'status', 'statusNote', 'statusUpdatedAt',
+          'statusSource',
           'lastLatitude', 'lastLongitude', 'lastLocationAt',
           'locationSharingEnabled'
-        ]);
+        ])
+        && (!('statusSource' in request.resource.data)
+            || request.resource.data.statusSource in ['manual', 'auto']);
     }
 
     match /calendar_events/{eventId} {

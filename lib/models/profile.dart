@@ -19,7 +19,7 @@ extension ProfileIdX on ProfileId {
       ProfileId.values.firstWhere((p) => p.id == id, orElse: () => ProfileId.aku);
 }
 
-enum PresenceStatus { home, campus, office, sleeping, other }
+enum PresenceStatus { home, campus, office, travelling, sleeping, other }
 
 extension PresenceStatusX on PresenceStatus {
   String get label {
@@ -30,6 +30,8 @@ extension PresenceStatusX on PresenceStatus {
         return 'Di kampus';
       case PresenceStatus.office:
         return 'Di kantor';
+      case PresenceStatus.travelling:
+        return 'Di jalan';
       case PresenceStatus.sleeping:
         return 'Tidur';
       case PresenceStatus.other:
@@ -41,6 +43,15 @@ extension PresenceStatusX on PresenceStatus {
       .firstWhere((s) => s.name == name, orElse: () => PresenceStatus.other);
 }
 
+/// Whether a status was typed by the member or worked out from their location.
+/// The distinction is what lets a hand-set status survive a geofence event.
+enum StatusSource { manual, auto }
+
+extension StatusSourceX on StatusSource {
+  static StatusSource fromName(String? name) => StatusSource.values
+      .firstWhere((s) => s.name == name, orElse: () => StatusSource.manual);
+}
+
 class Profile {
   final String id;
   final String name;
@@ -48,6 +59,7 @@ class Profile {
   final PresenceStatus status;
   final String? statusNote;
   final DateTime? statusUpdatedAt;
+  final StatusSource statusSource;
   final double? lastLatitude;
   final double? lastLongitude;
   final DateTime? lastLocationAt;
@@ -60,6 +72,7 @@ class Profile {
     this.status = PresenceStatus.other,
     this.statusNote,
     this.statusUpdatedAt,
+    this.statusSource = StatusSource.manual,
     this.lastLatitude,
     this.lastLongitude,
     this.lastLocationAt,
@@ -67,6 +80,38 @@ class Profile {
   });
 
   bool get hasLocation => lastLatitude != null && lastLongitude != null;
+
+  /// Rebuilding a Profile by hand drops any field the caller forgot, which is
+  /// how new fields quietly vanish. Everything that copies a Profile goes
+  /// through here instead.
+  Profile copyWith({
+    String? name,
+    bool? isAdmin,
+    PresenceStatus? status,
+    String? statusNote,
+    bool clearStatusNote = false,
+    DateTime? statusUpdatedAt,
+    StatusSource? statusSource,
+    double? lastLatitude,
+    double? lastLongitude,
+    DateTime? lastLocationAt,
+    bool? locationSharingEnabled,
+  }) {
+    return Profile(
+      id: id,
+      name: name ?? this.name,
+      isAdmin: isAdmin ?? this.isAdmin,
+      status: status ?? this.status,
+      statusNote: clearStatusNote ? null : (statusNote ?? this.statusNote),
+      statusUpdatedAt: statusUpdatedAt ?? this.statusUpdatedAt,
+      statusSource: statusSource ?? this.statusSource,
+      lastLatitude: lastLatitude ?? this.lastLatitude,
+      lastLongitude: lastLongitude ?? this.lastLongitude,
+      lastLocationAt: lastLocationAt ?? this.lastLocationAt,
+      locationSharingEnabled:
+          locationSharingEnabled ?? this.locationSharingEnabled,
+    );
+  }
 
   factory Profile.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data() ?? {};
@@ -77,6 +122,7 @@ class Profile {
       status: PresenceStatusX.fromName(data['status'] as String?),
       statusNote: data['statusNote'] as String?,
       statusUpdatedAt: (data['statusUpdatedAt'] as Timestamp?)?.toDate(),
+      statusSource: StatusSourceX.fromName(data['statusSource'] as String?),
       lastLatitude: (data['lastLatitude'] as num?)?.toDouble(),
       lastLongitude: (data['lastLongitude'] as num?)?.toDouble(),
       lastLocationAt: (data['lastLocationAt'] as Timestamp?)?.toDate(),

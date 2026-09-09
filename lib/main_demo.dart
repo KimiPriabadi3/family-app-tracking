@@ -21,6 +21,9 @@ void main() {
 /// answer their browser's location prompt.
 class _NoLocationService implements LocationService {
   @override
+  bool get isSharing => false;
+
+  @override
   Future<bool> requestPermission() async => false;
 
   @override
@@ -28,6 +31,9 @@ class _NoLocationService implements LocationService {
 
   @override
   Future<void> stopSharing() async {}
+
+  @override
+  Future<void> reArmIfEnabled(String profileId) async {}
 }
 
 class FamilyAppDemo extends StatefulWidget {

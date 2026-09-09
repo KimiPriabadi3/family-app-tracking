@@ -16,6 +16,8 @@ IconData iconForStatus(PresenceStatus status) {
       return Icons.school_rounded;
     case PresenceStatus.office:
       return Icons.work_rounded;
+    case PresenceStatus.travelling:
+      return Icons.directions_walk_rounded;
     case PresenceStatus.sleeping:
       return Icons.bedtime_rounded;
     case PresenceStatus.other:
