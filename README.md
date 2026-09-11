@@ -9,7 +9,7 @@ Dibuat karena hal-hal kecil sehari-hari ("kamu di mana?", "token listrik habis",
 | Target | Cara dapat |
 |---|---|
 | Browser | Coba dulu tanpa memasang apa pun — [buka demo](https://kimipriabadi3.github.io/family-app-tracking/) |
-| Android | APK dari [latest release](../../releases/latest) — `family-app-tracking-arm64.apk` (19,8 MB) untuk hampir semua HP sekarang, atau `family-app-tracking-arm32.apk` (17,4 MB) untuk HP lama |
+| Android | APK dari [latest release](../../releases/latest) — `family-app-tracking-arm64.apk` (19,9 MB) untuk hampir semua HP sekarang, atau `family-app-tracking-arm32.apk` (17,5 MB) untuk HP lama |
 
 Install APK langsung dari filenya (perlu izinkan "install dari sumber tidak dikenal" sekali di HP).
 
