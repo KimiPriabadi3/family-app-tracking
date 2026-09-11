@@ -61,3 +61,6 @@ secrets.properties
 # Names the Firebase project, kept private for the same reason
 .firebaserc
 android/.kotlin/
+
+# Flutter golden-test diff output
+test/failures/
