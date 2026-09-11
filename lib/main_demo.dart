@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 
 import 'demo/demo_firestore.dart';
+import 'models/family_place.dart';
+import 'models/profile.dart';
 import 'screens/home_screen.dart';
 import 'services/firestore_service.dart';
+import 'services/geofence_service.dart';
 import 'services/location_service.dart';
+import 'services/notification_plan.dart';
+import 'services/notification_service.dart';
 import 'theme/app_theme.dart';
 
 /// Entry point for the public web demo.
@@ -14,7 +19,65 @@ import 'theme/app_theme.dart';
 void main() {
   FirestoreService.instance = DemoFirestore();
   LocationService.instance = _NoLocationService();
+  // native_geofence, workmanager and flutter_local_notifications have no web
+  // implementation, so every one of them is stubbed out here. Never call
+  // Workmanager().initialize() in this entry point.
+  GeofenceService.instance = _NoGeofenceService();
+  NotificationService.instance = _NoNotificationService();
   runApp(const FamilyAppDemo());
+}
+
+class _NoGeofenceService implements GeofenceService {
+  @override
+  Future<void> init() async {}
+
+  @override
+  Future<LocationPermissionLevel> permissionLevel() async =>
+      LocationPermissionLevel.always;
+
+  @override
+  Future<bool> requestWhileInUse() async => true;
+
+  @override
+  Future<bool> requestAlways() async => true;
+
+  @override
+  Future<bool> isBatteryOptimised() async => false;
+
+  @override
+  Future<bool> requestIgnoreBatteryOptimizations() async => true;
+
+  @override
+  Future<void> openSettings() async {}
+
+  @override
+  Future<void> syncGeofences(String profileId) async {}
+
+  @override
+  Future<void> clearAll() async {}
+
+  @override
+  Future<List<String>> registeredIds() async => const [];
+
+  @override
+  Future<Map<PresenceStatus, FamilyPlace>> places() async => const {};
+}
+
+class _NoNotificationService implements NotificationService {
+  @override
+  Future<void> init() async {}
+
+  @override
+  Future<bool> permissionGranted() async => true;
+
+  @override
+  Future<bool> requestPermission() async => true;
+
+  @override
+  Future<void> show(PlannedNotification notification) async {}
+
+  @override
+  Future<void> consumeLaunchPayload() async {}
 }
 
 /// The demo fakes coordinates itself, so there is no reason to make a visitor

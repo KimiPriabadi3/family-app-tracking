@@ -274,6 +274,7 @@ class _DayEntries extends StatelessWidget {
                 ownerName:
                     names[event.ownerProfileId] ?? event.ownerProfileId,
                 canCancel: isAdmin || event.ownerProfileId == profileId,
+                viewerProfileId: profileId,
               ),
           ],
         );
@@ -286,11 +287,13 @@ class _EntryCard extends StatelessWidget {
   final CalendarEvent event;
   final String ownerName;
   final bool canCancel;
+  final String viewerProfileId;
 
   const _EntryCard({
     required this.event,
     required this.ownerName,
     required this.canCancel,
+    required this.viewerProfileId,
   });
 
   @override
@@ -357,7 +360,8 @@ class _EntryCard extends StatelessWidget {
           ),
           if (canCancel && !cancelled)
             TextButton(
-              onPressed: () => FirestoreService.instance.cancelEvent(event.id),
+              onPressed: () => FirestoreService.instance
+                  .cancelEvent(event.id, viewerProfileId),
               child: const Text('Batalkan'),
             ),
         ],

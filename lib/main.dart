@@ -1,12 +1,20 @@
-﻿import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:workmanager/workmanager.dart';
 
 import 'screens/profile_select_screen.dart';
+import 'services/background_poll.dart';
+import 'services/geofence_service.dart';
+import 'services/notification_service.dart';
 import 'theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
+  await NotificationService.instance.init();
+  await GeofenceService.instance.init();
+  await Workmanager().initialize(notificationCallbackDispatcher);
+  await NotificationService.instance.consumeLaunchPayload();
   runApp(const FamilyApp());
 }
 

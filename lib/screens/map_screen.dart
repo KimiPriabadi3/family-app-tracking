@@ -114,7 +114,8 @@ class _MapScreenState extends State<MapScreen> {
                     ),
                   ),
                   subtitle: Text(
-                    'Hanya selagi aplikasi terbuka. Tidak ada pelacakan di latar belakang.',
+                    'Terkirim saat aplikasi dibuka dan saat kamu tiba atau pergi dari '
+                    'tempatmu. Tidak dipantau terus-menerus.',
                     style: TextStyle(
                       fontSize: 13,
                       height: 1.35,
@@ -163,7 +164,10 @@ class _FamilyMap extends StatelessWidget {
                 point: LatLng(p.lastLatitude!, p.lastLongitude!),
                 width: 54,
                 height: 54,
-                child: _MemberPin(profile: p),
+                child: Opacity(
+                  opacity: freshnessOf(p.lastLocationAt).inkOpacity,
+                  child: _MemberPin(profile: p),
+                ),
               ),
           ],
         ),
@@ -268,7 +272,10 @@ class _LocationCard extends StatelessWidget {
                       !sharing
                           ? 'Tidak berbagi lokasi'
                           : profile.hasLocation
-                              ? 'Diperbarui ${formatRelativeTime(profile.lastLocationAt!)}'
+                              ? fresh == Freshness.fresh
+                                  ? 'Diperbarui ${formatRelativeTime(profile.lastLocationAt!)}'
+                                  : 'Lokasi terakhir ${formatRelativeTime(profile.lastLocationAt!)} '
+                                      '— mungkin sudah tidak akurat'
                               : 'Menunggu sinyal',
                       style: TextStyle(
                         fontSize: 13,

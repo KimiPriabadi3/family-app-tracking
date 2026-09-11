@@ -40,7 +40,7 @@ class DemoFirestore extends FirestoreService {
         name: 'Mas',
         isAdmin: true,
         status: PresenceStatus.campus,
-        statusNote: 'Kelas sampai jam 4',
+        statusSource: StatusSource.auto,
         statusUpdatedAt: now.subtract(const Duration(hours: 3)),
       ),
       Profile(
@@ -266,7 +266,7 @@ class DemoFirestore extends FirestoreService {
   }
 
   @override
-  Future<void> cancelEvent(String eventId) async {
+  Future<void> cancelEvent(String eventId, String cancelledByProfileId) async {
     _events = [
       for (final e in _events)
         if (e.id == eventId)
@@ -278,6 +278,8 @@ class DemoFirestore extends FirestoreService {
             note: e.note,
             cancelled: true,
             createdAt: e.createdAt,
+            cancelledAt: DateTime.now(),
+            cancelledByProfileId: cancelledByProfileId,
           )
         else
           e,

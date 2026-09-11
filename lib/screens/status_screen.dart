@@ -6,6 +6,7 @@ import '../theme/app_theme.dart';
 import '../utils/freshness.dart';
 import '../utils/relative_time.dart';
 import '../widgets/admin_action.dart';
+import '../widgets/settings_action.dart';
 import '../widgets/soft.dart';
 
 IconData iconForStatus(PresenceStatus status) {
@@ -108,7 +109,10 @@ class StatusScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Keluarga'),
-        actions: [AdminAction(profileId: profileId)],
+        actions: [
+          SettingsAction(profileId: profileId),
+          AdminAction(profileId: profileId),
+        ],
       ),
       body: StreamBuilder<List<Profile>>(
         stream: FirestoreService.instance.watchProfiles(),
@@ -232,6 +236,31 @@ class _MemberCard extends StatelessWidget {
                         ),
                       ],
                     ),
+                    // Says what moved it, so a status nobody typed doesn't
+                    // read like a claim they made. Automatic writes always
+                    // clear the note, so this never competes with one.
+                    if (profile.statusSource == StatusSource.auto) ...[
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.auto_awesome_rounded,
+                            size: 15,
+                            color: scheme.onSurfaceVariant,
+                          ),
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              'Berubah otomatis dari lokasi',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: scheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                     if (note != null && note.isNotEmpty) ...[
                       const SizedBox(height: 10),
                       Text(

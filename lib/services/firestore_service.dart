@@ -112,8 +112,12 @@ class FirestoreService {
   }
 
   /// Only the admin should be allowed to call this for events they don't own.
-  Future<void> cancelEvent(String eventId) {
-    return _events.doc(eventId).update({'cancelled': true});
+  Future<void> cancelEvent(String eventId, String cancelledByProfileId) {
+    return _events.doc(eventId).update({
+      'cancelled': true,
+      'cancelledAt': Timestamp.now(),
+      'cancelledByProfileId': cancelledByProfileId,
+    });
   }
 
   Future<void> deleteEvent(String eventId) {
@@ -195,5 +199,54 @@ class FirestoreService {
 
   Future<void> deleteErrandItem(String itemId) {
     return _errandItems.doc(itemId).delete();
+  }
+
+  // ---- One-shot reads for the background check ----
+  //
+  // The periodic poll runs in its own isolate where a live listener would be
+  // the wrong shape: it wakes, asks what changed since last time, and dies.
+
+  Future<List<ErrandItem>> errandsCreatedAfter(DateTime after) async {
+    final snap = await _errandItems
+        .where('createdAt', isGreaterThan: Timestamp.fromDate(after))
+        .orderBy('createdAt', descending: true)
+        .limit(20)
+        .get();
+    return snap.docs.map(ErrandItem.fromDoc).toList();
+  }
+
+  Future<List<Announcement>> announcementsCreatedAfter(DateTime after) async {
+    final snap = await _announcements
+        .where('createdAt', isGreaterThan: Timestamp.fromDate(after))
+        .orderBy('createdAt', descending: true)
+        .limit(20)
+        .get();
+    return snap.docs.map(Announcement.fromDoc).toList();
+  }
+
+  Future<List<CalendarEvent>> eventsCancelledAfter(DateTime after) async {
+    final snap = await _events
+        .where('cancelledAt', isGreaterThan: Timestamp.fromDate(after))
+        .orderBy('cancelledAt', descending: true)
+        .limit(20)
+        .get();
+    return snap.docs.map(CalendarEvent.fromDoc).toList();
+  }
+
+  Future<List<Profile>> profilesOnce() async {
+    final snap = await _profiles.orderBy(FieldPath.documentId).get();
+    return snap.docs.map(Profile.fromDoc).toList();
+  }
+
+  Future<List<JobAssignment>> assignmentsForWeekOnce(DateTime weekStart) async {
+    final snap = await _jobAssignments
+        .where('weekStart', isEqualTo: Timestamp.fromDate(weekStart))
+        .get();
+    return snap.docs.map(JobAssignment.fromDoc).toList();
+  }
+
+  Future<List<JobTemplate>> jobTemplatesOnce() async {
+    final snap = await _jobTemplates.orderBy('order').get();
+    return snap.docs.map(JobTemplate.fromDoc).toList();
   }
 }

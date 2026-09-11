@@ -1,11 +1,13 @@
 ﻿@Tags(['preview'])
 library;
 
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:family_app/models/announcement.dart';
 import 'package:family_app/models/calendar_event.dart';
@@ -21,7 +23,13 @@ import 'package:family_app/screens/map_screen.dart';
 import 'package:family_app/screens/profile_select_screen.dart';
 import 'package:family_app/screens/status_screen.dart';
 import 'package:family_app/screens/tasks_screen.dart';
+import 'package:family_app/models/family_place.dart';
+import 'package:family_app/screens/places_screen.dart';
+import 'package:family_app/screens/settings_screen.dart';
 import 'package:family_app/services/firestore_service.dart';
+import 'package:family_app/services/geofence_service.dart';
+import 'package:family_app/services/notification_plan.dart';
+import 'package:family_app/services/notification_service.dart';
 import 'package:family_app/theme/app_theme.dart';
 
 /// Renders every screen against canned data so the design can be reviewed
@@ -42,6 +50,30 @@ void main() {
     ]);
     await _loadFont('MaterialIcons', ['materialicons-regular.otf']);
     FirestoreService.instance = _CannedFirestore(now: now, today: today);
+    // The new screens read permission and registration state through these
+    // singletons; without stubs they reach for method channels that a widget
+    // test does not have.
+    GeofenceService.instance = _CannedGeofence();
+    NotificationService.instance = _CannedNotifications();
+
+    // Settings and Tempatku read their state from SharedPreferences, which has
+    // no implementation in a widget test.
+    SharedPreferences.setMockInitialValues({
+      'auto_status_enabled': true,
+      'notif_enabled': true,
+      'notif_arrivals_enabled': true,
+      'places_json': jsonEncode({
+        'home': {
+          'latitude': -6.2349,
+          'longitude': 106.9896,
+          'radiusMeters': 120,
+          'setAt': now
+              .subtract(const Duration(days: 3))
+              .millisecondsSinceEpoch,
+          'accuracyMeters': 18.0,
+        },
+      }),
+    });
 
     // flutter_map asks path_provider for a tile cache directory, which has no
     // implementation in a widget test.
@@ -82,6 +114,8 @@ void main() {
   testWidgets('06 titip beli', (t) => preview(t, '06-titip-beli', const _ErrandHost()));
   testWidgets('07 peta', (t) => preview(t, '07-peta', const MapScreen(profileId: 'aku')));
   testWidgets('08 admin', (t) => preview(t, '08-admin', const AdminScreen(profileId: 'aku')));
+  testWidgets('10 pengaturan', (t) => preview(t, '10-pengaturan', const SettingsScreen(profileId: 'aku')));
+  testWidgets('11 tempatku', (t) => preview(t, '11-tempatku', const PlacesScreen(profileId: 'aku')));
 
   testWidgets('09 kartu keluarga gelap', (tester) async {
     tester.view.physicalSize = const Size(780, 1688);
@@ -123,6 +157,65 @@ Future<void> _loadFont(String family, List<String> files) async {
   await loader.load();
 }
 
+class _CannedGeofence implements GeofenceService {
+  @override
+  Future<void> init() async {}
+
+  @override
+  Future<LocationPermissionLevel> permissionLevel() async =>
+      LocationPermissionLevel.always;
+
+  @override
+  Future<bool> requestWhileInUse() async => true;
+
+  @override
+  Future<bool> requestAlways() async => true;
+
+  @override
+  Future<bool> isBatteryOptimised() async => false;
+
+  @override
+  Future<bool> requestIgnoreBatteryOptimizations() async => true;
+
+  @override
+  Future<void> openSettings() async {}
+
+  @override
+  Future<void> syncGeofences(String profileId) async {}
+
+  @override
+  Future<void> clearAll() async {}
+
+  @override
+  Future<List<String>> registeredIds() async => const ['aku_home'];
+
+  @override
+  Future<Map<PresenceStatus, FamilyPlace>> places() async => {
+        PresenceStatus.home: FamilyPlace(
+          latitude: -6.2349,
+          longitude: 106.9896,
+          setAt: DateTime.now().subtract(const Duration(days: 3)),
+        ),
+      };
+}
+
+class _CannedNotifications implements NotificationService {
+  @override
+  Future<void> init() async {}
+
+  @override
+  Future<bool> permissionGranted() async => true;
+
+  @override
+  Future<bool> requestPermission() async => true;
+
+  @override
+  Future<void> show(PlannedNotification notification) async {}
+
+  @override
+  Future<void> consumeLaunchPayload() async {}
+}
+
 class _CannedFirestore extends FirestoreService {
   final DateTime now;
   final DateTime today;
@@ -147,7 +240,7 @@ class _CannedFirestore extends FirestoreService {
       name: 'Mas',
       isAdmin: true,
       status: PresenceStatus.campus,
-      statusNote: 'Kelas sampai jam 4',
+      statusSource: StatusSource.auto,
       statusUpdatedAt: now.subtract(const Duration(hours: 3)),
     ),
     Profile(

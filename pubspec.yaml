@@ -51,6 +51,19 @@ dependencies:
   # Material motion patterns (fade-through, shared axis)
   animations: ^2.0.11
 
+  # OS-managed geofencing: Android wakes the app only when a boundary is
+  # crossed, so there is no location stream and no foreground service.
+  native_geofence: ^1.3.1
+
+  # Geolocator cannot express Android 11+'s two-step "while in use" then
+  # "all the time" flow, and this also handles the battery-optimisation prompt.
+  permission_handler: ^13.0.2
+
+  # No server and no paid Firebase plan, so each phone checks Firestore itself
+  # on a schedule and raises the notification locally.
+  workmanager: ^0.10.10
+  flutter_local_notifications: ^22.3.0
+
   # State management
   provider: ^6.1.2
 

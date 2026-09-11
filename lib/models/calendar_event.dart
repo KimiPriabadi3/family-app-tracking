@@ -9,6 +9,11 @@ class CalendarEvent {
   final bool cancelled;
   final DateTime createdAt;
 
+  /// Recorded so a background check can tell a fresh cancellation from an old
+  /// one, and say who called it off.
+  final DateTime? cancelledAt;
+  final String? cancelledByProfileId;
+
   const CalendarEvent({
     required this.id,
     required this.ownerProfileId,
@@ -17,6 +22,8 @@ class CalendarEvent {
     this.note,
     this.cancelled = false,
     required this.createdAt,
+    this.cancelledAt,
+    this.cancelledByProfileId,
   });
 
   factory CalendarEvent.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
@@ -29,6 +36,8 @@ class CalendarEvent {
       note: data['note'] as String?,
       cancelled: data['cancelled'] as bool? ?? false,
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      cancelledAt: (data['cancelledAt'] as Timestamp?)?.toDate(),
+      cancelledByProfileId: data['cancelledByProfileId'] as String?,
     );
   }
 
