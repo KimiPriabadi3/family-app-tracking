@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
 
-import '../models/family_place.dart';
+import '../models/profile.dart';
 import '../services/background_poll.dart';
+import '../services/firestore_service.dart';
 import '../services/geofence_service.dart';
+import '../services/location_service.dart';
 import '../services/notification_service.dart';
 import '../services/notification_state.dart';
 import '../services/place_store.dart';
+import '../services/profile_session.dart';
 import '../widgets/permission_sheet.dart';
 import '../widgets/soft.dart';
 import 'places_screen.dart';
+import 'profile_select_screen.dart';
 
 /// Per-member settings. Unlike the admin panel, everyone reaches this — places
 /// and notifications belong to the person holding the phone.
@@ -16,6 +20,9 @@ class SettingsScreen extends StatefulWidget {
   final String profileId;
 
   const SettingsScreen({super.key, required this.profileId});
+
+  /// The web demo switches members with its own strip, so it hides "Keluar".
+  static bool allowSignOut = true;
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -100,6 +107,52 @@ class _SettingsScreenState extends State<SettingsScreen>
     await _load();
   }
 
+  Future<void> _signOut() async {
+    final name = kDefaultProfileNames[widget.profileId] ?? widget.profileId;
+    final sure = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('Keluar dari profil $name?'),
+        content: const Text(
+          'Status otomatis, notifikasi, dan berbagi lokasi di HP ini berhenti '
+          'sampai kamu masuk lagi. Tempat-tempatmu tetap tersimpan.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Batal'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Keluar'),
+          ),
+        ],
+      ),
+    );
+    if (sure != true) return;
+
+    await LocationService.instance.stopSharing();
+    try {
+      // Otherwise the family map keeps showing this phone's last position as
+      // if it were still being updated.
+      await FirestoreService.instance
+          .setLocationSharing(widget.profileId, false)
+          .timeout(const Duration(seconds: 10));
+    } catch (_) {
+      // Offline: Firestore queues the write and sends it later.
+    }
+    await GeofenceService.instance.clearAll();
+    await cancelPolling();
+    await NotificationState.setEnabled(false);
+    await ProfileSession.clear();
+
+    if (!mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const ProfileSelectScreen()),
+      (_) => false,
+    );
+  }
+
   Future<void> _tryNow() async {
     final messenger = ScaffoldMessenger.of(context);
     messenger.showSnackBar(const SnackBar(content: Text('Memeriksa...')));
@@ -140,9 +193,12 @@ class _SettingsScreenState extends State<SettingsScreen>
                     ),
                   ),
                   subtitle: Text(
-                    _autoEnabled
-                        ? '$_markedPlaces dari ${kPlaceableStatuses.length} tempat sudah ditandai'
-                        : 'Belum aktif',
+                    switch ((_autoEnabled, _markedPlaces)) {
+                      (true, 0) => 'Aktif, tapi belum ada tempat',
+                      (true, final n) => 'Aktif · $n tempat',
+                      (false, 0) => 'Belum aktif',
+                      (false, final n) => 'Belum aktif · $n tempat',
+                    },
                     style: TextStyle(
                       fontSize: 13,
                       color: scheme.onSurfaceVariant,
@@ -231,7 +287,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                   'Pengumuman baru',
                   'Jadwal yang dibatalkan',
                   'Pengingat piket Senin pagi',
-                  'Ada yang sampai di rumah, kampus, atau kantor',
+                  'Ada yang sampai di salah satu tempatnya',
                 ])
                   _Line(icon: Icons.check_rounded, text: item, good: true),
                 const SizedBox(height: 14),
@@ -331,6 +387,36 @@ class _SettingsScreenState extends State<SettingsScreen>
               ],
             ),
           ),
+          if (SettingsScreen.allowSignOut) ...[
+            const SectionHeading(
+              icon: Icons.person_rounded,
+              title: 'Profil',
+            ),
+            SoftCard(
+              padding: EdgeInsets.zero,
+              child: ListTile(
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
+                leading: Icon(Icons.logout_rounded, color: scheme.error),
+                title: Text(
+                  'Keluar dari profil ${kDefaultProfileNames[widget.profileId] ?? ''}',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: scheme.error,
+                  ),
+                ),
+                subtitle: Text(
+                  'Kembali ke layar "Kamu siapa?"',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+                onTap: _signOut,
+              ),
+            ),
+          ],
         ],
       ),
     );

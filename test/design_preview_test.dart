@@ -28,6 +28,7 @@ import 'package:family_app/models/family_place.dart';
 import 'package:family_app/screens/place_picker_screen.dart';
 import 'package:family_app/screens/places_screen.dart';
 import 'package:family_app/screens/settings_screen.dart';
+import 'package:family_app/widgets/place_editor_sheet.dart';
 import 'package:family_app/services/firestore_service.dart';
 import 'package:family_app/services/geofence_service.dart';
 import 'package:family_app/services/notification_plan.dart';
@@ -60,7 +61,10 @@ void main() {
 
     // Settings and Tempatku read their state from SharedPreferences, which has
     // no implementation in a widget test.
+    // Written in 1.1.x's format on purpose, so every render also exercises
+    // the migration to named places.
     SharedPreferences.setMockInitialValues({
+      'selected_profile_id': 'aku',
       'auto_status_enabled': true,
       'notif_enabled': true,
       'notif_arrivals_enabled': true,
@@ -73,6 +77,14 @@ void main() {
               .subtract(const Duration(days: 3))
               .millisecondsSinceEpoch,
           'accuracyMeters': 18.0,
+        },
+        'campus': {
+          'latitude': -6.3627,
+          'longitude': 106.8269,
+          'radiusMeters': 200,
+          'setAt': now
+              .subtract(const Duration(days: 1))
+              .millisecondsSinceEpoch,
         },
       }),
     });
@@ -119,12 +131,14 @@ void main() {
   testWidgets('10 pengaturan', (t) => preview(t, '10-pengaturan', const SettingsScreen(profileId: 'aku')));
   testWidgets('11 tempatku', (t) => preview(t, '11-tempatku', const PlacesScreen(profileId: 'aku')));
   testWidgets('12 pilih di peta', (t) => preview(t, '12-pilih-di-peta', const PlacePickerScreen(
-        status: PresenceStatus.office,
+        placeName: 'Bimbel Primagama',
         initialCenter: LatLng(-6.2349, 106.9896),
         initialZoom: 16,
         radiusMeters: 120,
         color: Color(0xFF4A9DEC),
       )));
+
+  testWidgets('13 tambah tempat', (t) => preview(t, '13-tambah-tempat', const _EditorHost()));
 
   testWidgets('09 kartu keluarga gelap', (tester) async {
     tester.view.physicalSize = const Size(780, 1688);
@@ -171,7 +185,7 @@ class _CannedGeofence implements GeofenceService {
   Future<void> checkPlacesNow(String profileId) async {}
 
   @override
-  Future<void> arrivedByMarking(String profileId, PresenceStatus place) async {}
+  Future<void> arrivedByMarking(String profileId, FamilyPlace place) async {}
 
   @override
   Future<void> init() async {}
@@ -205,13 +219,7 @@ class _CannedGeofence implements GeofenceService {
   Future<List<String>> registeredIds() async => const ['aku_home'];
 
   @override
-  Future<Map<PresenceStatus, FamilyPlace>> places() async => {
-        PresenceStatus.home: FamilyPlace(
-          latitude: -6.2349,
-          longitude: 106.9896,
-          setAt: DateTime.now().subtract(const Duration(days: 3)),
-        ),
-      };
+  Future<List<FamilyPlace>> places() async => const [];
 }
 
 class _CannedNotifications implements NotificationService {
@@ -254,7 +262,9 @@ class _CannedFirestore extends FirestoreService {
       id: 'aku',
       name: 'Mas',
       isAdmin: true,
-      status: PresenceStatus.campus,
+      status: PresenceStatus.place,
+      statusPlace: 'Kampus',
+      statusIcon: 'campus',
       statusSource: StatusSource.auto,
       statusUpdatedAt: now.subtract(const Duration(hours: 3)),
     ),
@@ -262,7 +272,9 @@ class _CannedFirestore extends FirestoreService {
       id: 'adek',
       name: 'Adek',
       isAdmin: false,
-      status: PresenceStatus.office,
+      status: PresenceStatus.place,
+      statusPlace: 'Bimbel Primagama',
+      statusIcon: 'study',
       statusUpdatedAt: now.subtract(const Duration(hours: 20)),
     ),
   ];
@@ -384,4 +396,30 @@ class _CannedFirestore extends FirestoreService {
 
   @override
   Future<void> ensureSeedProfiles(Map<String, String> idToName, String adminId) async {}
+}
+
+/// Opens the add-place sheet over an empty Tempatku, the way a member meets it.
+class _EditorHost extends StatefulWidget {
+  const _EditorHost();
+
+  @override
+  State<_EditorHost> createState() => _EditorHostState();
+}
+
+class _EditorHostState extends State<_EditorHost> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      showPlaceEditor(
+        context,
+        takenNames: const {'Rumah'},
+        color: const Color(0xFF4A9DEC),
+      );
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) =>
+      Scaffold(appBar: AppBar(title: const Text('Tempatku')));
 }

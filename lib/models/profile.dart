@@ -19,7 +19,9 @@ extension ProfileIdX on ProfileId {
       ProfileId.values.firstWhere((p) => p.id == id, orElse: () => ProfileId.aku);
 }
 
-enum PresenceStatus { home, campus, office, travelling, sleeping, other }
+/// `place` means "at one of the member's own named places"; the name travels
+/// alongside in [Profile.statusPlace].
+enum PresenceStatus { home, campus, office, travelling, sleeping, other, place }
 
 extension PresenceStatusX on PresenceStatus {
   String get label {
@@ -36,8 +38,17 @@ extension PresenceStatusX on PresenceStatus {
         return 'Tidur';
       case PresenceStatus.other:
         return 'Lainnya';
+      case PresenceStatus.place:
+        return 'Di tempatnya';
     }
   }
+
+  /// Statuses that describe being at somewhere you can arrive at.
+  bool get isSomewhere =>
+      this == PresenceStatus.home ||
+      this == PresenceStatus.campus ||
+      this == PresenceStatus.office ||
+      this == PresenceStatus.place;
 
   static PresenceStatus fromName(String? name) => PresenceStatus.values
       .firstWhere((s) => s.name == name, orElse: () => PresenceStatus.other);
@@ -60,6 +71,11 @@ class Profile {
   final String? statusNote;
   final DateTime? statusUpdatedAt;
   final StatusSource statusSource;
+
+  /// Name and icon of the member's own place when [status] is
+  /// [PresenceStatus.place] — "Bimbel Primagama", not its coordinates.
+  final String? statusPlace;
+  final String? statusIcon;
   final double? lastLatitude;
   final double? lastLongitude;
   final DateTime? lastLocationAt;
@@ -73,6 +89,8 @@ class Profile {
     this.statusNote,
     this.statusUpdatedAt,
     this.statusSource = StatusSource.manual,
+    this.statusPlace,
+    this.statusIcon,
     this.lastLatitude,
     this.lastLongitude,
     this.lastLocationAt,
@@ -80,6 +98,17 @@ class Profile {
   });
 
   bool get hasLocation => lastLatitude != null && lastLongitude != null;
+
+  bool get _atNamedPlace =>
+      status == PresenceStatus.place && (statusPlace?.isNotEmpty ?? false);
+
+  /// What the family reads: "Di Bimbel Primagama", or the fixed label.
+  String get statusLabel => _atNamedPlace ? 'Di $statusPlace' : status.label;
+
+  /// Identity of the status for "did it change?" checks. Two different places
+  /// are different statuses even though both are [PresenceStatus.place].
+  String get statusKey =>
+      _atNamedPlace ? 'place:$statusPlace' : status.name;
 
   /// Rebuilding a Profile by hand drops any field the caller forgot, which is
   /// how new fields quietly vanish. Everything that copies a Profile goes
@@ -92,6 +121,9 @@ class Profile {
     bool clearStatusNote = false,
     DateTime? statusUpdatedAt,
     StatusSource? statusSource,
+    String? statusPlace,
+    String? statusIcon,
+    bool clearStatusPlace = false,
     double? lastLatitude,
     double? lastLongitude,
     DateTime? lastLocationAt,
@@ -105,6 +137,9 @@ class Profile {
       statusNote: clearStatusNote ? null : (statusNote ?? this.statusNote),
       statusUpdatedAt: statusUpdatedAt ?? this.statusUpdatedAt,
       statusSource: statusSource ?? this.statusSource,
+      statusPlace:
+          clearStatusPlace ? null : (statusPlace ?? this.statusPlace),
+      statusIcon: clearStatusPlace ? null : (statusIcon ?? this.statusIcon),
       lastLatitude: lastLatitude ?? this.lastLatitude,
       lastLongitude: lastLongitude ?? this.lastLongitude,
       lastLocationAt: lastLocationAt ?? this.lastLocationAt,
@@ -123,6 +158,8 @@ class Profile {
       statusNote: data['statusNote'] as String?,
       statusUpdatedAt: (data['statusUpdatedAt'] as Timestamp?)?.toDate(),
       statusSource: StatusSourceX.fromName(data['statusSource'] as String?),
+      statusPlace: data['statusPlace'] as String?,
+      statusIcon: data['statusIcon'] as String?,
       lastLatitude: (data['lastLatitude'] as num?)?.toDouble(),
       lastLongitude: (data['lastLongitude'] as num?)?.toDouble(),
       lastLocationAt: (data['lastLocationAt'] as Timestamp?)?.toDate(),

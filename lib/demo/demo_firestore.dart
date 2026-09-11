@@ -39,7 +39,9 @@ class DemoFirestore extends FirestoreService {
         id: 'aku',
         name: 'Mas',
         isAdmin: true,
-        status: PresenceStatus.campus,
+        status: PresenceStatus.place,
+        statusPlace: 'Kampus',
+        statusIcon: 'campus',
         statusSource: StatusSource.auto,
         statusUpdatedAt: now.subtract(const Duration(hours: 3)),
       ),
@@ -47,7 +49,9 @@ class DemoFirestore extends FirestoreService {
         id: 'adek',
         name: 'Adek',
         isAdmin: false,
-        status: PresenceStatus.office,
+        status: PresenceStatus.place,
+        statusPlace: 'Bimbel Primagama',
+        statusIcon: 'study',
         statusUpdatedAt: now.subtract(const Duration(hours: 20)),
       ),
     ];
@@ -183,6 +187,8 @@ class DemoFirestore extends FirestoreService {
     PresenceStatus status, {
     String? note,
     StatusSource source = StatusSource.manual,
+    String? placeName,
+    String? placeIcon,
   }) async {
     _profiles = [
       for (final p in _profiles)
@@ -193,6 +199,9 @@ class DemoFirestore extends FirestoreService {
             clearStatusNote: note == null,
             statusUpdatedAt: DateTime.now(),
             statusSource: source,
+            statusPlace: placeName,
+            statusIcon: placeIcon,
+            clearStatusPlace: placeName == null,
           )
         else
           p,

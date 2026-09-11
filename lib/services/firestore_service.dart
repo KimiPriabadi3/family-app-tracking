@@ -36,12 +36,18 @@ class FirestoreService {
     PresenceStatus status, {
     String? note,
     StatusSource source = StatusSource.manual,
+    String? placeName,
+    String? placeIcon,
   }) {
+    // Always written, null included: a merge would otherwise leave an old
+    // place name behind under a status that no longer names a place.
     return _profiles.doc(profileId).set({
       'status': status.name,
       'statusNote': note,
       'statusUpdatedAt': Timestamp.now(),
       'statusSource': source.name,
+      'statusPlace': placeName,
+      'statusIcon': placeIcon,
     }, SetOptions(merge: true));
   }
 

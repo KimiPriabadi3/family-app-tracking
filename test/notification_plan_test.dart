@@ -70,7 +70,7 @@ void main() {
           cancelledByProfileId: 'aku',
         ),
       ],
-      arrivals: const [Arrival(profileId: 'aku', status: PresenceStatus.home)],
+      arrivals: const [Arrival(profileId: 'aku', where: 'rumah')],
     );
     expect(result, isEmpty);
   });
@@ -87,7 +87,7 @@ void main() {
 
   test('kedatangan anggota lain diberitahukan', () {
     final result = plan(
-      arrivals: const [Arrival(profileId: 'bunda', status: PresenceStatus.office)],
+      arrivals: const [Arrival(profileId: 'bunda', where: 'kantor')],
     );
     expect(result, hasLength(1));
     expect(result.first.title, 'Bunda');
@@ -125,13 +125,14 @@ void main() {
 
   group('deteksi kedatangan', () {
     Profile at(String id, PresenceStatus status,
-            {StatusSource source = StatusSource.auto}) =>
+            {StatusSource source = StatusSource.auto, String? place}) =>
         Profile(
           id: id,
           name: names[id]!,
           isAdmin: false,
           status: status,
           statusSource: source,
+          statusPlace: place,
         );
 
     test('perpindahan ke tempat dihitung sebagai kedatangan', () {
@@ -140,7 +141,35 @@ void main() {
         current: [at('bunda', PresenceStatus.home)],
       );
       expect(arrivals, hasLength(1));
-      expect(arrivals.first.status, PresenceStatus.home);
+      expect(arrivals.first.where, 'rumah');
+    });
+
+    test('tempat buatan sendiri disebut namanya', () {
+      final arrivals = arrivalsBetween(
+        previousStatuses: {'adek': 'travelling'},
+        current: [
+          at('adek', PresenceStatus.place, place: 'Bimbel Primagama'),
+        ],
+      );
+      expect(arrivals.single.where, 'Bimbel Primagama');
+    });
+
+    test('pindah dari satu tempat bimbel ke tempat lain tetap kedatangan', () {
+      final arrivals = arrivalsBetween(
+        previousStatuses: {'adek': 'place:Bimbel Primagama'},
+        current: [at('adek', PresenceStatus.place, place: 'Bimbel Ganesha')],
+      );
+      expect(arrivals.single.where, 'Bimbel Ganesha');
+    });
+
+    test('tetap di tempat bernama yang sama tidak dihitung ulang', () {
+      final arrivals = arrivalsBetween(
+        previousStatuses: {'adek': 'place:Bimbel Primagama'},
+        current: [
+          at('adek', PresenceStatus.place, place: 'Bimbel Primagama'),
+        ],
+      );
+      expect(arrivals, isEmpty);
     });
 
     test('keberangkatan tidak dihitung', () {

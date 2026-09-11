@@ -152,12 +152,18 @@ class SoftPill extends StatelessWidget {
             Icon(icon, size: 15, color: filled ? Colors.white : color),
             const SizedBox(width: 6),
           ],
-          Text(
-            text,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: filled ? Colors.white : color,
+          // Place names are the member's own now, and "Di Bimbel Primagama
+          // Cabang Bekasi" has to end in an ellipsis rather than overflow.
+          Flexible(
+            child: Text(
+              text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: filled ? Colors.white : color,
+              ),
             ),
           ),
         ],

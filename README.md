@@ -39,14 +39,17 @@ Gambar-gambar itu bukan mockup — semuanya dirender langsung dari widget aplika
 
 - **Kalender** — tiap anggota mengisi jadwalnya di tanggal tertentu, yang lain bisa lihat.
 - **Status** — di rumah / di kampus / di kantor / di jalan / tidur, plus keterangan singkat opsional (misal "OTW pulang, telat 30 menit").
-- **Status otomatis** — tandai rumah, kampus, atau kantor sekali, entah langsung di tempatnya atau dengan memilih titiknya di peta dari mana saja; status berubah sendiri saat kamu tiba dan jadi "Di jalan" saat pergi. Status yang kamu isi manual tetap dihormati sampai kamu benar-benar berpindah tempat.
+- **Tempatku** — tiap anggota membuat daftar tempatnya sendiri, dengan nama dan ikon bebas: "Rumah", "Bimbel Primagama", "Rumah Nenek". Tandai langsung di tempatnya, atau pilih titiknya di peta dari mana saja.
+- **Status otomatis** — status berubah sendiri saat kamu tiba ("Di Bimbel Primagama") dan jadi "Di jalan" saat pergi. Status yang kamu isi manual tetap dihormati sampai kamu benar-benar berpindah tempat.
 - **Notifikasi** — titipan belanja baru, pengumuman baru, jadwal yang dibatalkan, pengingat piket Senin pagi, dan kabar saat ada anggota yang tiba. Sengaja tidak untuk hal yang bikin berisik: perubahan status manual, keberangkatan, pembaruan lokasi.
 - **Papan Pengumuman** — catatan singkat yang langsung terlihat semua anggota.
 - **Tugas** — daftar piket rumah yang rolling tiap minggu, plus daftar titip beli bersama.
 - **Peta** — posisi anggota yang mengaktifkan berbagi lokasi.
 - **Admin** — satu profil bertindak sebagai admin: bisa membatalkan jadwal orang lain dan mengatur rotasi piket.
 
-Tidak ada login akun — tiap HP cukup memilih "kamu siapa" sekali, lalu diingat secara lokal.
+- **Tema terang dan gelap** — satu ketukan di sebelah ikon gerigi.
+
+Tidak ada login akun — tiap HP cukup memilih "kamu siapa" sekali, lalu diingat secara lokal. Kalau HP dipinjam, ada tombol **Keluar** di Pengaturan; tempat-tempat tiap orang tetap tersimpan terpisah.
 
 ## Stack
 
@@ -56,7 +59,7 @@ Peta sengaja memakai OpenStreetMap, bukan Google Maps: tidak butuh API key dan t
 
 Notifikasi juga tanpa server: tiap HP memeriksa sendiri kira-kira tiap 15 menit, jadi tidak perlu Cloud Functions dan tidak perlu kartu kredit. Gantinya, notifikasi biasanya datang 15–30 menit setelah kejadian, bukan seketika.
 
-Koordinat rumah, kampus, dan kantor untuk status otomatis **hanya disimpan di HP masing-masing** dan tidak pernah dikirim ke database. Yang dibagikan ke keluarga cuma hasilnya, misalnya "Bunda di kantor".
+Koordinat tempat untuk status otomatis **hanya disimpan di HP masing-masing** dan tidak pernah dikirim ke database. Yang dibagikan ke keluarga cuma nama tempatnya, misalnya "Adek di Bimbel Primagama".
 
 ## Supaya status otomatis dan notifikasi tetap jalan
 

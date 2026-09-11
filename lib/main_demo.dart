@@ -2,13 +2,15 @@ import 'package:flutter/material.dart';
 
 import 'demo/demo_firestore.dart';
 import 'models/family_place.dart';
-import 'models/profile.dart';
 import 'screens/home_screen.dart';
+import 'screens/settings_screen.dart';
 import 'services/firestore_service.dart';
 import 'services/geofence_service.dart';
 import 'services/location_service.dart';
 import 'services/notification_plan.dart';
 import 'services/notification_service.dart';
+import 'services/profile_session.dart';
+import 'services/theme_controller.dart';
 import 'theme/app_theme.dart';
 
 /// Entry point for the public web demo.
@@ -24,6 +26,9 @@ void main() {
   // Workmanager().initialize() in this entry point.
   GeofenceService.instance = _NoGeofenceService();
   NotificationService.instance = _NoNotificationService();
+  SettingsScreen.allowSignOut = false;
+  // Places are kept per member, so the demo has to say who is "logged in".
+  ProfileSession.setSelectedProfileId('aku');
   runApp(const FamilyAppDemo());
 }
 
@@ -32,7 +37,7 @@ class _NoGeofenceService implements GeofenceService {
   Future<void> checkPlacesNow(String profileId) async {}
 
   @override
-  Future<void> arrivedByMarking(String profileId, PresenceStatus place) async {}
+  Future<void> arrivedByMarking(String profileId, FamilyPlace place) async {}
 
   @override
   Future<void> init() async {}
@@ -66,7 +71,7 @@ class _NoGeofenceService implements GeofenceService {
   Future<List<String>> registeredIds() async => const [];
 
   @override
-  Future<Map<PresenceStatus, FamilyPlace>> places() async => const {};
+  Future<List<FamilyPlace>> places() async => const [];
 }
 
 class _NoNotificationService implements NotificationService {
@@ -117,14 +122,21 @@ class _FamilyAppDemoState extends State<FamilyAppDemo> {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'My Family — demo',
-      debugShowCheckedModeBanner: false,
-      theme: buildAppTheme(brightness: Brightness.light),
-      darkTheme: buildAppTheme(brightness: Brightness.dark),
-      home: _DemoShell(
-        profileId: _profileId,
-        onSwitch: (id) => setState(() => _profileId = id),
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: ThemeController.mode,
+      builder: (context, mode, _) => MaterialApp(
+        title: 'My Family — demo',
+        debugShowCheckedModeBanner: false,
+        theme: buildAppTheme(brightness: Brightness.light),
+        darkTheme: buildAppTheme(brightness: Brightness.dark),
+        themeMode: mode,
+        home: _DemoShell(
+          profileId: _profileId,
+          onSwitch: (id) {
+            ProfileSession.setSelectedProfileId(id);
+            setState(() => _profileId = id);
+          },
+        ),
       ),
     );
   }

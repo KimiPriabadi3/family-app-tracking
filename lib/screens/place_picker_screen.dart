@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
-import '../models/family_place.dart';
-import '../models/profile.dart';
 
 /// Marking a place from somewhere else: slide the map until the pin sits on it.
 ///
@@ -11,7 +9,7 @@ import '../models/profile.dart';
 /// on the spot you are actually at, while a finger on a map can drift a street
 /// away — so this sits beside "mark it here" rather than replacing it.
 class PlacePickerScreen extends StatefulWidget {
-  final PresenceStatus status;
+  final String placeName;
   final LatLng initialCenter;
   final double initialZoom;
   final int radiusMeters;
@@ -19,7 +17,7 @@ class PlacePickerScreen extends StatefulWidget {
 
   const PlacePickerScreen({
     super.key,
-    required this.status,
+    required this.placeName,
     required this.initialCenter,
     required this.initialZoom,
     required this.radiusMeters,
@@ -43,7 +41,7 @@ class _PlacePickerScreenState extends State<PlacePickerScreen> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final name = placeNameOf(widget.status);
+    final name = widget.placeName;
 
     return Scaffold(
       appBar: AppBar(title: Text('Pilih $name di peta')),

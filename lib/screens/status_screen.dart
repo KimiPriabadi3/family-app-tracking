@@ -1,30 +1,17 @@
 import 'package:flutter/material.dart';
 
+import '../models/family_place.dart';
 import '../models/profile.dart';
 import '../services/firestore_service.dart';
+import '../services/place_store.dart';
 import '../theme/app_theme.dart';
 import '../utils/freshness.dart';
 import '../utils/relative_time.dart';
 import '../widgets/admin_action.dart';
+import '../widgets/place_icons.dart';
 import '../widgets/settings_action.dart';
 import '../widgets/soft.dart';
-
-IconData iconForStatus(PresenceStatus status) {
-  switch (status) {
-    case PresenceStatus.home:
-      return Icons.home_rounded;
-    case PresenceStatus.campus:
-      return Icons.school_rounded;
-    case PresenceStatus.office:
-      return Icons.work_rounded;
-    case PresenceStatus.travelling:
-      return Icons.directions_walk_rounded;
-    case PresenceStatus.sleeping:
-      return Icons.bedtime_rounded;
-    case PresenceStatus.other:
-      return Icons.explore_rounded;
-  }
-}
+import '../widgets/theme_action.dart';
 
 /// Who is where, right now. The first thing anyone sees when they open the app.
 class StatusScreen extends StatelessWidget {
@@ -36,7 +23,11 @@ class StatusScreen extends StatelessWidget {
 
   Future<void> _setStatus(BuildContext context, Profile me) async {
     final noteController = TextEditingController(text: me.statusNote ?? '');
-    final chosen = await showModalBottomSheet<PresenceStatus>(
+    // The member's own places come first: "Di Bimbel Primagama" is a better
+    // answer than "Lainnya" with a note.
+    final places = await PlaceStore.places();
+    if (!context.mounted) return;
+    final chosen = await showModalBottomSheet<(PresenceStatus, FamilyPlace?)>(
       context: context,
       isScrollControlled: true,
       builder: (sheetContext) {
@@ -72,25 +63,32 @@ class StatusScreen extends StatelessWidget {
                     ),
                   ),
                 ),
-                for (final s in PresenceStatus.values)
-                  ListTile(
-                    contentPadding:
-                        const EdgeInsets.symmetric(horizontal: 24, vertical: 2),
-                    leading: Icon(iconForStatus(s), color: scheme.primary),
-                    title: Text(
-                      s.label,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: scheme.onSurface,
-                      ),
-                    ),
-                    trailing: s == me.status
-                        ? Icon(Icons.check_circle_rounded, color: scheme.primary)
-                        : null,
-                    onTap: () => Navigator.pop(sheetContext, s),
+                Flexible(
+                  child: ListView(
+                    shrinkWrap: true,
+                    padding: const EdgeInsets.only(bottom: 12),
+                    children: [
+                      for (final place in places)
+                        _StatusOption(
+                          icon: placeIconData(place.icon),
+                          label: 'Di ${place.name}',
+                          selected: me.status == PresenceStatus.place &&
+                              me.statusPlace == place.name,
+                          onTap: () => Navigator.pop(
+                              sheetContext, (PresenceStatus.place, place)),
+                        ),
+                      if (places.isNotEmpty) const Divider(indent: 24, endIndent: 24),
+                      for (final s in PresenceStatus.values)
+                        if (s != PresenceStatus.place)
+                          _StatusOption(
+                            icon: iconForStatus(s),
+                            label: s.label,
+                            selected: s == me.status,
+                            onTap: () => Navigator.pop(sheetContext, (s, null)),
+                          ),
+                    ],
                   ),
-                const SizedBox(height: 12),
+                ),
               ],
             ),
           ),
@@ -99,9 +97,15 @@ class StatusScreen extends StatelessWidget {
     );
 
     if (chosen == null) return;
+    final (status, place) = chosen;
     final note = noteController.text.trim();
-    await FirestoreService.instance
-        .updateStatus(profileId, chosen, note: note.isEmpty ? null : note);
+    await FirestoreService.instance.updateStatus(
+      profileId,
+      status,
+      note: note.isEmpty ? null : note,
+      placeName: place?.name,
+      placeIcon: place?.icon.name,
+    );
   }
 
   @override
@@ -110,6 +114,7 @@ class StatusScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Keluarga'),
         actions: [
+          const ThemeAction(),
           SettingsAction(profileId: profileId),
           AdminAction(profileId: profileId),
         ],
@@ -211,17 +216,20 @@ class _MemberCard extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 8),
-                    Row(
+                    // Wraps rather than squeezes: a long place name keeps the
+                    // whole pill, and the time drops to the next line.
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 6,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        Flexible(
-                          child: SoftPill(
-                            text: profile.status.label,
-                            color: color.withValues(alpha: fresh.inkOpacity),
-                            icon: iconForStatus(profile.status),
-                          ),
+                        SoftPill(
+                          text: profile.statusLabel,
+                          color: color.withValues(alpha: fresh.inkOpacity),
+                          icon: iconForProfileStatus(profile),
                         ),
-                        const SizedBox(width: 8),
-                        Flexible(
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
                           child: Text(
                             profile.statusUpdatedAt == null
                                 ? 'belum diisi'
@@ -284,6 +292,41 @@ class _MemberCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _StatusOption extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _StatusOption({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 2),
+      leading: Icon(icon, color: scheme.primary),
+      title: Text(
+        label,
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+          color: scheme.onSurface,
+        ),
+      ),
+      trailing: selected
+          ? Icon(Icons.check_circle_rounded, color: scheme.primary)
+          : null,
+      onTap: onTap,
     );
   }
 }

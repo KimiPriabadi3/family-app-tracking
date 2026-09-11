@@ -5,7 +5,6 @@ import 'package:flutter/widgets.dart';
 import 'package:native_geofence/native_geofence.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../models/profile.dart';
 import 'auto_status.dart';
 import 'auto_status_apply.dart';
 import 'firestore_service.dart';
@@ -42,11 +41,12 @@ Future<void> geofenceTriggered(GeofenceCallbackParams params) async {
     final region = params.geofences.firstOrNull;
     if (region == null) return;
 
-    // Ids are "<profileId>_<statusName>"; anything else is a leftover from a
-    // profile switch and must not move this member's status.
+    // Ids are "<profileId>_<placeId>"; anything else is a leftover from a
+    // profile switch or a deleted place, and must not move anyone's status.
     final parts = region.id.split('_');
     if (parts.length != 2 || parts.first != profileId) return;
-    final placeStatus = PresenceStatusX.fromName(parts[1]);
+    final place = await PlaceStore.placeById(parts[1]);
+    if (place == null) return;
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.reload();
@@ -71,7 +71,7 @@ Future<void> geofenceTriggered(GeofenceCallbackParams params) async {
     final me = await FirestoreService.instance.getProfile(profileId);
     await applyPlaceEdge(
       profileId: profileId,
-      placeStatus: placeStatus,
+      place: place,
       edge: edge,
       origin: AutoStatusOrigin.background,
       current: me,

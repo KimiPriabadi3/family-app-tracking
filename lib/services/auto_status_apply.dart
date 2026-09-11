@@ -24,34 +24,44 @@ extension on AutoStatusOrigin {
 /// Applies one arrival or departure to this member's status, the same way
 /// whether Android reported it or the app worked it out itself.
 ///
-/// Returns the status written, or null if nothing changed.
-Future<PresenceStatus?> applyPlaceEdge({
+/// Returns what was written, or null if nothing changed.
+Future<AutoStatusChange?> applyPlaceEdge({
   required String profileId,
-  required PresenceStatus placeStatus,
+  required FamilyPlace place,
   required GeofenceEdge edge,
   required AutoStatusOrigin origin,
   Profile? current,
 }) async {
   final now = DateTime.now();
   final me = current ?? await FirestoreService.instance.getProfile(profileId);
-  final where = placeNameOf(placeStatus);
-  final what = edge == GeofenceEdge.entered ? 'Masuk $where' : 'Keluar dari $where';
+  final what = edge == GeofenceEdge.entered
+      ? 'Masuk ${place.name}'
+      : 'Keluar dari ${place.name}';
   if (me == null) {
     await PlaceStore.recordEvent('$what (${origin.label}) — profil tidak ditemukan');
     return null;
   }
 
-  final next = decideAutoStatus(
-    currentStatus: me.status,
-    currentSource: me.statusSource,
-    statusUpdatedAt: me.statusUpdatedAt,
-    placeStatus: placeStatus,
+  final lastInside = await PlaceStore.lastInside();
+  final change = decideAutoStatus(
+    current: me,
+    place: place,
     edge: edge,
     now: now,
+    // Never seen anywhere yet counts as elsewhere: the first reading after
+    // switching this on should be allowed to set the status.
+    cameFromElsewhere: lastInside != place.id,
   );
-  if (next == null) {
+  // Remember where the phone is, whatever the status decision — the next
+  // event is judged against it.
+  if (edge == GeofenceEdge.entered) {
+    await PlaceStore.setLastInside(place.id);
+  } else if (lastInside == place.id) {
+    await PlaceStore.setLastInside('');
+  }
+  if (change == null) {
     await PlaceStore.recordEvent(
-      '$what (${origin.label}) — status tetap ${me.status.label}',
+      '$what (${origin.label}) — status tetap ${me.statusLabel}',
       at: now,
     );
     return null;
@@ -60,11 +70,18 @@ Future<PresenceStatus?> applyPlaceEdge({
   // An automatic change clears the note: "otw pulang, telat 30 menit" is
   // wrong the moment you actually arrive.
   await FirestoreService.instance
-      .updateStatus(profileId, next, note: null, source: StatusSource.auto)
+      .updateStatus(
+        profileId,
+        change.status,
+        note: null,
+        source: StatusSource.auto,
+        placeName: change.place?.name,
+        placeIcon: change.place?.icon.name,
+      )
       .timeout(const Duration(seconds: 10));
   await PlaceStore.recordEvent(
-    '$what (${origin.label}) — status jadi ${next.label}',
+    '$what (${origin.label}) — status jadi ${change.label}',
     at: now,
   );
-  return next;
+  return change;
 }

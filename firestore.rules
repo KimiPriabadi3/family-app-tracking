@@ -14,12 +14,22 @@ service cloud.firestore {
       allow write: if profileId in ['bunda', 'aku', 'adek']
         && request.resource.data.keys().hasOnly([
           'name', 'isAdmin', 'status', 'statusNote', 'statusUpdatedAt',
-          'statusSource',
+          'statusSource', 'statusPlace', 'statusIcon',
           'lastLatitude', 'lastLongitude', 'lastLocationAt',
           'locationSharingEnabled'
         ])
         && (!('statusSource' in request.resource.data)
-            || request.resource.data.statusSource in ['manual', 'auto']);
+            || request.resource.data.statusSource in ['manual', 'auto'])
+        // A member's own place name, shown in their status. Only the name —
+        // coordinates never come here.
+        && (!('statusPlace' in request.resource.data)
+            || request.resource.data.statusPlace == null
+            || (request.resource.data.statusPlace is string
+                && request.resource.data.statusPlace.size() <= 30))
+        && (!('statusIcon' in request.resource.data)
+            || request.resource.data.statusIcon == null
+            || (request.resource.data.statusIcon is string
+                && request.resource.data.statusIcon.size() <= 20));
     }
 
     match /calendar_events/{eventId} {

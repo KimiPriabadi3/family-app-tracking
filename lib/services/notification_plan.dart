@@ -114,9 +114,9 @@ List<PlannedNotification> planNotifications({
   for (final a in arrivals.where((a) => a.profileId != myProfileId)) {
     plans.add(PlannedNotification(
       kind: NotifKind.arrival,
-      id: idFor('arrive_${a.profileId}_${a.status.name}'),
+      id: idFor('arrive_${a.profileId}_${a.where}'),
       title: nameOf(a.profileId),
-      body: 'Sudah sampai ${a.status.label.toLowerCase()}',
+      body: 'Sudah sampai di ${a.where}',
       payload: 'status',
     ));
   }
@@ -151,9 +151,12 @@ List<PlannedNotification> planNotifications({
 /// somebody walks out of a door.
 class Arrival {
   final String profileId;
-  final PresenceStatus status;
 
-  const Arrival({required this.profileId, required this.status});
+  /// The place as it reads after "Sudah sampai di": "kantor", or a member's
+  /// own name for it, "Bimbel Primagama".
+  final String where;
+
+  const Arrival({required this.profileId, required this.where});
 }
 
 /// Arrival means: their status is now a real place, and it was something else
@@ -162,18 +165,18 @@ List<Arrival> arrivalsBetween({
   required Map<String, String> previousStatuses,
   required List<Profile> current,
 }) {
-  const places = {
-    PresenceStatus.home,
-    PresenceStatus.campus,
-    PresenceStatus.office,
-  };
   final arrivals = <Arrival>[];
   for (final p in current) {
-    if (!places.contains(p.status)) continue;
+    if (!p.status.isSomewhere) continue;
     if (p.statusSource != StatusSource.auto) continue;
-    if (previousStatuses[p.id] == p.status.name) continue;
+    // By key, not by status: from one named place to another is an arrival.
+    if (previousStatuses[p.id] == p.statusKey) continue;
     if (!previousStatuses.containsKey(p.id)) continue; // first run: no baseline
-    arrivals.add(Arrival(profileId: p.id, status: p.status));
+    final where = p.status == PresenceStatus.place
+        ? (p.statusPlace ?? '')
+        : p.status.label.replaceFirst('Di ', '').toLowerCase();
+    if (where.isEmpty) continue;
+    arrivals.add(Arrival(profileId: p.id, where: where));
   }
   return arrivals;
 }

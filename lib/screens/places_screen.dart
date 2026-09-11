@@ -4,17 +4,22 @@ import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../models/family_place.dart';
-import '../models/profile.dart';
 import '../services/geofence_service.dart';
 import '../services/place_store.dart';
 import '../theme/app_theme.dart';
 import '../utils/relative_time.dart';
 import '../widgets/permission_sheet.dart';
+import '../widgets/place_editor_sheet.dart';
+import '../widgets/place_icons.dart';
 import '../widgets/soft.dart';
 import 'place_picker_screen.dart';
-import 'status_screen.dart' show iconForStatus;
 
-/// Where each member marks the places that should set their status.
+/// What a place is before it has coordinates: enough to save it once located.
+typedef _PlaceName = ({String id, String name, PlaceIcon icon});
+
+/// Where each member lists the places that should set their status — as many
+/// as they need, named however they like. Adek's two tutoring centres are two
+/// places, not a squeeze into "Di kampus".
 ///
 /// The coordinates never leave this phone — see PRODUCT.md. The family only
 /// ever sees the resulting status.
@@ -28,11 +33,13 @@ class PlacesScreen extends StatefulWidget {
 }
 
 class _PlacesScreenState extends State<PlacesScreen> with WidgetsBindingObserver {
-  Map<PresenceStatus, FamilyPlace> _places = {};
+  List<FamilyPlace> _places = [];
   bool _autoEnabled = false;
   LocationPermissionLevel _permission = LocationPermissionLevel.none;
   bool _busy = false;
   ({DateTime at, String text})? _lastEvent;
+
+  Color get _color => AppColors.forMember(context, widget.profileId);
 
   @override
   void initState() {
@@ -68,6 +75,12 @@ class _PlacesScreenState extends State<PlacesScreen> with WidgetsBindingObserver
     });
   }
 
+  void _toast(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
+  }
+
   Future<void> _toggleAuto(bool value) async {
     if (!value) {
       await PlaceStore.setAutoStatusEnabled(false);
@@ -96,8 +109,8 @@ class _PlacesScreenState extends State<PlacesScreen> with WidgetsBindingObserver
       context,
       icon: Icons.auto_awesome_rounded,
       title: 'Biar statusmu berubah sendiri',
-      body: 'Kalau kamu sampai di rumah, statusmu jadi "Di rumah" tanpa kamu '
-          'sentuh apa-apa.',
+      body: 'Kalau kamu sampai di salah satu tempatmu, statusmu berubah '
+          'tanpa kamu sentuh apa-apa.',
       points: const [
         'Aplikasi cuma dibangunkan saat kamu masuk atau keluar tempat yang kamu tandai',
         'Bukan dipantau terus-menerus, dan tidak ada yang bisa melihat titik lokasinya',
@@ -126,12 +139,67 @@ class _PlacesScreenState extends State<PlacesScreen> with WidgetsBindingObserver
     return await service.permissionLevel() == LocationPermissionLevel.always;
   }
 
-  Future<void> _markHere(PresenceStatus status) async {
+  Set<String> _namesExcept(FamilyPlace? place) =>
+      {for (final p in _places) if (p.id != place?.id) p.name};
+
+  Future<void> _addPlace() async {
+    final draft = await showPlaceEditor(
+      context,
+      takenNames: _namesExcept(null),
+      color: _color,
+    );
+    if (draft == null) return;
+    final _PlaceName place =
+        (id: PlaceStore.newId(), name: draft.name, icon: draft.icon);
+    if (draft.locate == PlaceLocate.map) {
+      await _locateOnMap(place);
+    } else {
+      await _locateHere(place);
+    }
+  }
+
+  Future<void> _editPlace(FamilyPlace place) async {
+    final draft = await showPlaceEditor(
+      context,
+      existing: place,
+      takenNames: _namesExcept(place),
+      color: _color,
+    );
+    if (draft == null) return;
+    await PlaceStore.savePlace(
+        place.copyWith(name: draft.name, icon: draft.icon));
+    await _load();
+  }
+
+  Future<void> _save(
+    _PlaceName what, {
+    required double latitude,
+    required double longitude,
+    double? accuracyMeters,
+  }) async {
+    final existing = await PlaceStore.placeById(what.id);
+    await PlaceStore.savePlace(FamilyPlace(
+      id: what.id,
+      name: what.name,
+      icon: what.icon,
+      latitude: latitude,
+      longitude: longitude,
+      radiusMeters: existing?.radiusMeters ?? kDefaultPlaceRadius,
+      setAt: DateTime.now(),
+      accuracyMeters: accuracyMeters,
+    ));
+    await GeofenceService.instance.syncGeofences(widget.profileId);
+  }
+
+  Future<void> _locateHere(_PlaceName what) async {
     setState(() => _busy = true);
     try {
       if (await GeofenceService.instance.permissionLevel() ==
           LocationPermissionLevel.none) {
-        if (!await GeofenceService.instance.requestWhileInUse()) return;
+        if (!await GeofenceService.instance.requestWhileInUse()) {
+          _toast('Izin lokasi dibutuhkan untuk menandai tempat di sini.');
+          return;
+        }
       }
 
       final position = await Geolocator.getCurrentPosition(
@@ -164,39 +232,36 @@ class _PlacesScreenState extends State<PlacesScreen> with WidgetsBindingObserver
         if (proceed != true) return;
       }
 
-      await PlaceStore.setPlace(
-        status,
-        FamilyPlace(
-          latitude: position.latitude,
-          longitude: position.longitude,
-          setAt: DateTime.now(),
-          accuracyMeters: position.accuracy,
-        ),
+      await _save(
+        what,
+        latitude: position.latitude,
+        longitude: position.longitude,
+        accuracyMeters: position.accuracy,
       );
-      await GeofenceService.instance.syncGeofences(widget.profileId);
       // You are standing in it, so this is an arrival: don't make the member
       // leave and come back before anything happens.
-      await GeofenceService.instance.arrivedByMarking(widget.profileId, status);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(
-          _autoEnabled
-              ? '${status.label} ditandai, dan statusmu sekarang ${status.label}.'
-              : '${status.label} ditandai. Nyalakan Status otomatis supaya '
-                  'statusmu berubah sendiri.',
-        ),
-      ));
+      final saved = await PlaceStore.placeById(what.id);
+      if (saved != null) {
+        await GeofenceService.instance
+            .arrivedByMarking(widget.profileId, saved);
+      }
+      _toast(_autoEnabled
+          ? '${what.name} ditandai, dan statusmu sekarang Di ${what.name}.'
+          : '${what.name} ditandai. Nyalakan Status otomatis supaya statusmu '
+              'berubah sendiri.');
+    } catch (_) {
+      _toast('Lokasi belum bisa diambil. Pastikan GPS menyala, lalu coba lagi.');
     } finally {
       if (mounted) setState(() => _busy = false);
       await _load();
     }
   }
 
-  Future<void> _pickOnMap(PresenceStatus status) async {
-    final existing = _places[status];
+  Future<void> _locateOnMap(_PlaceName what) async {
+    final existing = await PlaceStore.placeById(what.id);
     // Start where the answer probably is: the place itself, else another place
     // this member already marked, else wherever the phone last was.
-    final anchor = existing ?? _places.values.firstOrNull;
+    final anchor = existing ?? (_places.isEmpty ? null : _places.first);
     var center = const LatLng(-6.2, 106.8456);
     var zoom = 11.0;
     if (anchor != null) {
@@ -217,46 +282,30 @@ class _PlacesScreenState extends State<PlacesScreen> with WidgetsBindingObserver
     if (!mounted) return;
     final picked = await Navigator.of(context).push<LatLng>(MaterialPageRoute(
       builder: (_) => PlacePickerScreen(
-        status: status,
+        placeName: what.name,
         initialCenter: center,
         initialZoom: zoom,
         radiusMeters: existing?.radiusMeters ?? kDefaultPlaceRadius,
-        color: AppColors.forMember(context, widget.profileId),
+        color: _color,
       ),
     ));
     if (picked == null) return;
 
-    await PlaceStore.setPlace(
-      status,
-      FamilyPlace(
-        latitude: picked.latitude,
-        longitude: picked.longitude,
-        radiusMeters: existing?.radiusMeters ?? kDefaultPlaceRadius,
-        setAt: DateTime.now(),
-        // Left empty on purpose: no GPS fix was involved, and the card reads
-        // this to say the place was picked on the map.
-      ),
-    );
-    await GeofenceService.instance.syncGeofences(widget.profileId);
+    // No accuracy on purpose: no GPS fix was involved, and the card reads its
+    // absence to say the place was picked on the map.
+    await _save(what, latitude: picked.latitude, longitude: picked.longitude);
     await _load();
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(
-        '${status.label} ditandai lewat peta. Kalau kurang pas, tandai ulang '
-        'saat kamu sedang di sana.',
-      ),
-    ));
+    _toast('${what.name} ditandai lewat peta. Kalau kurang pas, tandai ulang '
+        'saat kamu sedang di sana.');
   }
 
-  Future<void> _removePlace(PresenceStatus status) async {
-    final place = placeNameOf(status);
+  Future<void> _removePlace(FamilyPlace place) async {
     final sure = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: Text('Hapus tanda $place?'),
+        title: Text('Hapus ${place.name}?'),
         content: Text(
-          'Statusmu tidak akan berubah sendiri di $place sampai kamu '
-          'menandainya lagi.',
+          'Statusmu tidak akan berubah sendiri di ${place.name} lagi.',
         ),
         actions: [
           TextButton(
@@ -271,15 +320,13 @@ class _PlacesScreenState extends State<PlacesScreen> with WidgetsBindingObserver
       ),
     );
     if (sure != true) return;
-    await PlaceStore.removePlace(status);
+    await PlaceStore.removePlace(place.id);
     await GeofenceService.instance.syncGeofences(widget.profileId);
     await _load();
   }
 
-  Future<void> _setRadius(PresenceStatus status, int radius) async {
-    final place = _places[status];
-    if (place == null) return;
-    await PlaceStore.setPlace(status, place.copyWith(radiusMeters: radius));
+  Future<void> _setRadius(FamilyPlace place, int radius) async {
+    await PlaceStore.savePlace(place.copyWith(radiusMeters: radius));
     await GeofenceService.instance.syncGeofences(widget.profileId);
     await _load();
   }
@@ -289,6 +336,7 @@ class _PlacesScreenState extends State<PlacesScreen> with WidgetsBindingObserver
     final scheme = Theme.of(context).colorScheme;
     final needsPermission =
         _autoEnabled && _permission != LocationPermissionLevel.always;
+    final full = _places.length >= kMaxPlaces;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Tempatku')),
@@ -301,51 +349,51 @@ class _PlacesScreenState extends State<PlacesScreen> with WidgetsBindingObserver
                 padding: const EdgeInsets.symmetric(horizontal: 8),
                 child: Column(
                   children: [
-                SwitchListTile(
-                  title: Text(
-                    'Status otomatis',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: scheme.onSurface,
-                    ),
-                  ),
-                  subtitle: Text(
-                    'Ubah statusmu sendiri saat kamu sampai di tempat yang kamu tandai',
-                    style: TextStyle(
-                      fontSize: 13,
-                      height: 1.35,
-                      color: scheme.onSurfaceVariant,
-                    ),
-                  ),
-                  value: _autoEnabled,
-                  onChanged: _toggleAuto,
-                ),
-                if (_autoEnabled)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Icon(Icons.history_rounded,
-                            size: 16, color: scheme.onSurfaceVariant),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            _lastEvent == null
-                                ? 'Belum ada kejadian terdeteksi'
-                                : 'Terakhir: ${_lastEvent!.text} · '
-                                    '${formatRelativeTime(_lastEvent!.at)}',
-                            style: TextStyle(
-                              fontSize: 12,
-                              height: 1.4,
-                              color: scheme.onSurfaceVariant,
-                            ),
-                          ),
+                    SwitchListTile(
+                      title: Text(
+                        'Status otomatis',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: scheme.onSurface,
                         ),
-                      ],
+                      ),
+                      subtitle: Text(
+                        'Ubah statusmu sendiri saat kamu sampai di tempat yang kamu tandai',
+                        style: TextStyle(
+                          fontSize: 13,
+                          height: 1.35,
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                      value: _autoEnabled,
+                      onChanged: _toggleAuto,
                     ),
-                  ),
+                    if (_autoEnabled)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(Icons.history_rounded,
+                                size: 16, color: scheme.onSurfaceVariant),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                _lastEvent == null
+                                    ? 'Belum ada kejadian terdeteksi'
+                                    : 'Terakhir: ${_lastEvent!.text} · '
+                                        '${formatRelativeTime(_lastEvent!.at)}',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  height: 1.4,
+                                  color: scheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -391,18 +439,43 @@ class _PlacesScreenState extends State<PlacesScreen> with WidgetsBindingObserver
                     ],
                   ),
                 ),
-              for (final status in kPlaceableStatuses)
+              if (_places.isEmpty)
+                const SoftCard(
+                  padding: EdgeInsets.symmetric(vertical: 28, horizontal: 18),
+                  child: SoftEmpty(
+                    icon: Icons.add_location_alt_rounded,
+                    message: 'Belum ada tempat.\nTambahkan rumah, sekolah, '
+                        'tempat les, atau tempat lain yang sering kamu datangi.',
+                  ),
+                ),
+              for (final place in _places)
                 _PlaceCard(
-                  status: status,
-                  place: _places[status],
-                  profileId: widget.profileId,
-                  onMark: () => _markHere(status),
-                  onPickOnMap: () => _pickOnMap(status),
-                  onRemove: () => _removePlace(status),
-                  onRadius: (r) => _setRadius(status, r),
+                  key: ValueKey(place.id),
+                  place: place,
+                  color: _color,
+                  onEdit: () => _editPlace(place),
+                  onMarkHere: () => _locateHere(
+                      (id: place.id, name: place.name, icon: place.icon)),
+                  onPickOnMap: () => _locateOnMap(
+                      (id: place.id, name: place.name, icon: place.icon)),
+                  onRemove: () => _removePlace(place),
+                  onRadius: (r) => _setRadius(place, r),
                 ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+                padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: full ? null : _addPlace,
+                    icon: const Icon(Icons.add_location_alt_rounded, size: 20),
+                    label: Text(full
+                        ? 'Sudah $kMaxPlaces tempat, hapus satu dulu'
+                        : 'Tambah tempat'),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
                 child: Text(
                   'Kalau kamu ubah status sendiri, aplikasi tidak akan menimpanya '
                   'selama 8 jam — kecuali kamu terdeteksi pergi dari tempat itu.',
@@ -416,9 +489,9 @@ class _PlacesScreenState extends State<PlacesScreen> with WidgetsBindingObserver
             ],
           ),
           if (_busy)
-            ColoredBox(
+            const ColoredBox(
               color: Colors.black26,
-              child: const Center(child: CircularProgressIndicator()),
+              child: Center(child: CircularProgressIndicator()),
             ),
         ],
       ),
@@ -427,19 +500,20 @@ class _PlacesScreenState extends State<PlacesScreen> with WidgetsBindingObserver
 }
 
 class _PlaceCard extends StatefulWidget {
-  final PresenceStatus status;
-  final FamilyPlace? place;
-  final String profileId;
-  final VoidCallback onMark;
+  final FamilyPlace place;
+  final Color color;
+  final VoidCallback onEdit;
+  final VoidCallback onMarkHere;
   final VoidCallback onPickOnMap;
   final VoidCallback onRemove;
   final ValueChanged<int> onRadius;
 
   const _PlaceCard({
-    required this.status,
+    super.key,
     required this.place,
-    required this.profileId,
-    required this.onMark,
+    required this.color,
+    required this.onEdit,
+    required this.onMarkHere,
     required this.onPickOnMap,
     required this.onRemove,
     required this.onRadius,
@@ -458,7 +532,7 @@ class _PlaceCardState extends State<_PlaceCard> {
   @override
   void didUpdateWidget(_PlaceCard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.place?.radiusMeters != widget.place?.radiusMeters) {
+    if (oldWidget.place.radiusMeters != widget.place.radiusMeters) {
       _dragging = null;
     }
   }
@@ -466,10 +540,10 @@ class _PlaceCardState extends State<_PlaceCard> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final color = AppColors.forMember(context, widget.profileId);
-    final marked = widget.place;
-    final status = widget.status;
-    final radius = _dragging?.round() ?? marked?.radiusMeters;
+    final place = widget.place;
+    final color = widget.color;
+    final radius = _dragging?.round() ?? place.radiusMeters;
+    final point = LatLng(place.latitude, place.longitude);
 
     return SoftCard(
       padding: const EdgeInsets.all(18),
@@ -486,7 +560,7 @@ class _PlaceCardState extends State<_PlaceCard> {
                   color: color.withValues(alpha: 0.16),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(iconForStatus(status), color: color),
+                child: Icon(placeIconData(place.icon), color: color),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -494,104 +568,95 @@ class _PlaceCardState extends State<_PlaceCard> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      status.label,
+                      place.name,
                       style: TextStyle(
                         fontSize: 17,
                         fontWeight: FontWeight.w700,
                         color: scheme.onSurface,
                       ),
                     ),
-                    const SizedBox(height: 6),
-                    if (marked == null)
-                      SoftPill(
-                        text: 'Belum ditandai',
-                        color: scheme.error,
-                        icon: Icons.location_off_rounded,
-                      )
-                    else
-                      Text(
-                        'Radius $radius m · '
-                        '${marked.accuracyMeters == null ? 'dipilih di peta' : 'ditandai'} '
-                        '${formatRelativeTime(marked.setAt)}',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: scheme.onSurfaceVariant,
-                        ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Radius $radius m · '
+                      '${place.pickedOnMap ? 'dipilih di peta' : 'ditandai'} '
+                      '${formatRelativeTime(place.setAt)}',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: scheme.onSurfaceVariant,
                       ),
+                    ),
                   ],
                 ),
+              ),
+              TextButton(
+                onPressed: widget.onEdit,
+                child: const Text('Ubah'),
               ),
             ],
           ),
           const SizedBox(height: 14),
-          if (marked != null) ...[
-            ClipRRect(
-              borderRadius: BorderRadius.circular(AppRadius.chip),
-              child: SizedBox(
-                height: 140,
-                child: FlutterMap(
-                  options: MapOptions(
-                    initialCenter: LatLng(marked.latitude, marked.longitude),
-                    initialZoom: 15,
-                    interactionOptions: const InteractionOptions(
-                      flags: InteractiveFlag.none,
-                    ),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(AppRadius.chip),
+            child: SizedBox(
+              height: 140,
+              child: FlutterMap(
+                // Keyed by position so re-marking recentres the preview.
+                key: ValueKey('${place.latitude},${place.longitude}'),
+                options: MapOptions(
+                  initialCenter: point,
+                  initialZoom: 15,
+                  interactionOptions: const InteractionOptions(
+                    flags: InteractiveFlag.none,
                   ),
-                  children: [
-                    TileLayer(
-                      urlTemplate:
-                          'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                      userAgentPackageName: 'com.keluarga.family_app',
-                      maxZoom: 19,
-                    ),
-                    CircleLayer(
-                      circles: [
-                        CircleMarker(
-                          point: LatLng(marked.latitude, marked.longitude),
-                          radius: radius!.toDouble(),
-                          useRadiusInMeter: true,
-                          color: color.withValues(alpha: 0.20),
-                          borderColor: color,
-                          borderStrokeWidth: 2,
-                        ),
-                      ],
-                    ),
-                  ],
                 ),
+                children: [
+                  TileLayer(
+                    urlTemplate:
+                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    userAgentPackageName: 'com.keluarga.family_app',
+                    maxZoom: 19,
+                  ),
+                  CircleLayer(
+                    circles: [
+                      CircleMarker(
+                        point: point,
+                        radius: radius.toDouble(),
+                        useRadiusInMeter: true,
+                        color: color.withValues(alpha: 0.20),
+                        borderColor: color,
+                        borderStrokeWidth: 2,
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 6),
-            Slider(
-              value: _dragging ?? marked.radiusMeters.toDouble(),
-              min: kMinPlaceRadius.toDouble(),
-              max: kMaxPlaceRadius.toDouble(),
-              divisions: (kMaxPlaceRadius - kMinPlaceRadius) ~/ 25,
-              label: '$radius m',
-              onChanged: (value) => setState(() => _dragging = value),
-              onChangeEnd: (value) => widget.onRadius(value.round()),
-            ),
-          ],
+          ),
+          const SizedBox(height: 6),
+          Slider(
+            value: _dragging ?? place.radiusMeters.toDouble(),
+            min: kMinPlaceRadius.toDouble(),
+            max: kMaxPlaceRadius.toDouble(),
+            divisions: (kMaxPlaceRadius - kMinPlaceRadius) ~/ 25,
+            label: '$radius m',
+            onChanged: (value) => setState(() => _dragging = value),
+            onChangeEnd: (value) => widget.onRadius(value.round()),
+          ),
           Row(
             children: [
               Expanded(
                 child: FilledButton.icon(
-                  onPressed: widget.onMark,
+                  onPressed: widget.onMarkHere,
                   icon: const Icon(Icons.my_location_rounded, size: 20),
-                  label: Text(
-                    marked == null
-                        ? 'Jadikan lokasi ini ${placeNameOf(status)}'
-                        : 'Tandai ulang di sini',
-                  ),
+                  label: const Text('Tandai ulang di sini'),
                 ),
               ),
-              if (marked != null) ...[
-                const SizedBox(width: 8),
-                TextButton(
-                  onPressed: widget.onRemove,
-                  style: TextButton.styleFrom(foregroundColor: scheme.error),
-                  child: const Text('Hapus'),
-                ),
-              ],
+              const SizedBox(width: 8),
+              TextButton(
+                onPressed: widget.onRemove,
+                style: TextButton.styleFrom(foregroundColor: scheme.error),
+                child: const Text('Hapus'),
+              ),
             ],
           ),
           const SizedBox(height: 8),
@@ -600,7 +665,7 @@ class _PlaceCardState extends State<_PlaceCard> {
             child: OutlinedButton.icon(
               onPressed: widget.onPickOnMap,
               icon: const Icon(Icons.map_rounded, size: 20),
-              label: Text(marked == null ? 'Pilih di peta' : 'Ubah lewat peta'),
+              label: const Text('Ubah lewat peta'),
             ),
           ),
         ],

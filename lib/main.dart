@@ -6,6 +6,7 @@ import 'screens/profile_select_screen.dart';
 import 'services/background_poll.dart';
 import 'services/geofence_service.dart';
 import 'services/notification_service.dart';
+import 'services/theme_controller.dart';
 import 'theme/app_theme.dart';
 
 void main() async {
@@ -15,6 +16,7 @@ void main() async {
   await GeofenceService.instance.init();
   await Workmanager().initialize(notificationCallbackDispatcher);
   await NotificationService.instance.consumeLaunchPayload();
+  await ThemeController.load();
   runApp(const FamilyApp());
 }
 
@@ -23,14 +25,18 @@ class FamilyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'My Family',
-      // Ships as a debug build, and the corner ribbon has no business on a
-      // phone the family actually uses.
-      debugShowCheckedModeBanner: false,
-      theme: buildAppTheme(brightness: Brightness.light),
-      darkTheme: buildAppTheme(brightness: Brightness.dark),
-      home: const SessionGate(),
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: ThemeController.mode,
+      builder: (context, mode, _) => MaterialApp(
+        title: 'My Family',
+        // Ships as a debug build, and the corner ribbon has no business on a
+        // phone the family actually uses.
+        debugShowCheckedModeBanner: false,
+        theme: buildAppTheme(brightness: Brightness.light),
+        darkTheme: buildAppTheme(brightness: Brightness.dark),
+        themeMode: mode,
+        home: const SessionGate(),
+      ),
     );
   }
 }

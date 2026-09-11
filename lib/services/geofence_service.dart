@@ -3,7 +3,6 @@ import 'package:native_geofence/native_geofence.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../models/family_place.dart';
-import '../models/profile.dart';
 import 'auto_status.dart';
 import 'auto_status_apply.dart';
 import 'firestore_service.dart';
@@ -66,15 +65,15 @@ class GeofenceService {
     if (await permissionLevel() != LocationPermissionLevel.always) return;
 
     final places = await PlaceStore.places();
-    for (final entry in places.entries) {
+    for (final place in places) {
       await NativeGeofenceManager.instance.createGeofence(
         Geofence(
-          id: '${profileId}_${entry.key.name}',
+          id: '${profileId}_${place.id}',
           location: Location(
-            latitude: entry.value.latitude,
-            longitude: entry.value.longitude,
+            latitude: place.latitude,
+            longitude: place.longitude,
           ),
-          radiusMeters: entry.value.radiusMeters.toDouble(),
+          radiusMeters: place.radiusMeters.toDouble(),
           triggers: const {
             GeofenceEvent.enter,
             GeofenceEvent.exit,
@@ -123,12 +122,12 @@ class GeofenceService {
         latitude: position.latitude,
         longitude: position.longitude,
         accuracyMeters: position.accuracy,
-        currentStatus: me.status,
+        current: me,
       );
       if (reading == null) return;
       await applyPlaceEdge(
         profileId: profileId,
-        placeStatus: reading.place,
+        place: reading.place,
         edge: reading.edge,
         origin: AutoStatusOrigin.appOpened,
         current: me,
@@ -139,12 +138,12 @@ class GeofenceService {
   }
 
   /// Marking a place while standing in it is the clearest arrival there is.
-  Future<void> arrivedByMarking(String profileId, PresenceStatus place) async {
+  Future<void> arrivedByMarking(String profileId, FamilyPlace place) async {
     if (!await PlaceStore.autoStatusEnabled()) return;
     try {
       await applyPlaceEdge(
         profileId: profileId,
-        placeStatus: place,
+        place: place,
         edge: GeofenceEdge.entered,
         origin: AutoStatusOrigin.marked,
       );
@@ -163,5 +162,5 @@ class GeofenceService {
   }
 
   /// Convenience for the settings screen.
-  Future<Map<PresenceStatus, FamilyPlace>> places() => PlaceStore.places();
+  Future<List<FamilyPlace>> places() => PlaceStore.places();
 }

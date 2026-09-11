@@ -64,7 +64,7 @@ class NotificationState {
   }
 
   static Future<void> setLastStatuses(List<Profile> profiles) async {
-    final map = {for (final p in profiles) p.id: p.status.name};
+    final map = {for (final p in profiles) p.id: p.statusKey};
     await (await _prefs).setString(_statusesKey, jsonEncode(map));
   }
 

@@ -48,11 +48,17 @@ three known phones, identity is a choice on first launch, not a login.
 ## Operating Context
 
 - Each phone picks its member once on first launch; the choice is remembered
-  locally. There is no password, no account, and no way to be logged out.
+  locally. There is no password and no account. "Keluar" in Settings returns
+  to the picker for a borrowed phone; places are kept per member, so they
+  survive it and never leak to whoever logs in next.
 - Chores rotate weekly. Assignments are set per week rather than repeating
   automatically, so the rotation can bend around a busy week.
-- Location is shared only by members who switch it on, and only while the app
-  is open — there is no background tracking.
+- Location is shared only by members who switch it on: while the app is open,
+  and at the moment Android reports them crossing into or out of one of their
+  own places. There is no continuous background tracking.
+- Each member names their own places — "Rumah", "Bimbel Primagama" — as many
+  as they need. The coordinates stay on that member's phone; only the name
+  reaches the family, as part of their status.
 - The app is installed by downloading an APK from its GitHub releases page,
   not from the Play Store.
 
