@@ -11,6 +11,7 @@ import '../theme/app_theme.dart';
 import '../utils/relative_time.dart';
 import '../widgets/permission_sheet.dart';
 import '../widgets/soft.dart';
+import 'place_picker_screen.dart';
 import 'status_screen.dart' show iconForStatus;
 
 /// Where each member marks the places that should set their status.
@@ -182,16 +183,71 @@ class _PlacesScreenState extends State<PlacesScreen> with WidgetsBindingObserver
     }
   }
 
+  Future<void> _pickOnMap(PresenceStatus status) async {
+    final existing = _places[status];
+    // Start where the answer probably is: the place itself, else another place
+    // this member already marked, else wherever the phone last was.
+    final anchor = existing ?? _places.values.firstOrNull;
+    var center = const LatLng(-6.2, 106.8456);
+    var zoom = 11.0;
+    if (anchor != null) {
+      center = LatLng(anchor.latitude, anchor.longitude);
+      zoom = 16;
+    } else {
+      try {
+        final last = await Geolocator.getLastKnownPosition();
+        if (last != null) {
+          center = LatLng(last.latitude, last.longitude);
+          zoom = 15;
+        }
+      } catch (_) {
+        // No permission yet, or no platform support: Jakarta it is.
+      }
+    }
+
+    if (!mounted) return;
+    final picked = await Navigator.of(context).push<LatLng>(MaterialPageRoute(
+      builder: (_) => PlacePickerScreen(
+        status: status,
+        initialCenter: center,
+        initialZoom: zoom,
+        radiusMeters: existing?.radiusMeters ?? kDefaultPlaceRadius,
+        color: AppColors.forMember(context, widget.profileId),
+      ),
+    ));
+    if (picked == null) return;
+
+    await PlaceStore.setPlace(
+      status,
+      FamilyPlace(
+        latitude: picked.latitude,
+        longitude: picked.longitude,
+        radiusMeters: existing?.radiusMeters ?? kDefaultPlaceRadius,
+        setAt: DateTime.now(),
+        // Left empty on purpose: no GPS fix was involved, and the card reads
+        // this to say the place was picked on the map.
+      ),
+    );
+    await GeofenceService.instance.syncGeofences(widget.profileId);
+    await _load();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(
+        '${status.label} ditandai lewat peta. Kalau kurang pas, tandai ulang '
+        'saat kamu sedang di sana.',
+      ),
+    ));
+  }
+
   Future<void> _removePlace(PresenceStatus status) async {
-    // Re-marking means physically going back there, so a stray tap must not
-    // cost Bunda a trip to the office.
-    final place = status.label.toLowerCase().replaceFirst('di ', '');
+    final place = placeNameOf(status);
     final sure = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text('Hapus tanda $place?'),
         content: Text(
-          'Untuk menandainya lagi, kamu harus sedang berada di $place.',
+          'Statusmu tidak akan berubah sendiri di $place sampai kamu '
+          'menandainya lagi.',
         ),
         actions: [
           TextButton(
@@ -303,6 +359,7 @@ class _PlacesScreenState extends State<PlacesScreen> with WidgetsBindingObserver
                   place: _places[status],
                   profileId: widget.profileId,
                   onMark: () => _markHere(status),
+                  onPickOnMap: () => _pickOnMap(status),
                   onRemove: () => _removePlace(status),
                   onRadius: (r) => _setRadius(status, r),
                 ),
@@ -336,6 +393,7 @@ class _PlaceCard extends StatefulWidget {
   final FamilyPlace? place;
   final String profileId;
   final VoidCallback onMark;
+  final VoidCallback onPickOnMap;
   final VoidCallback onRemove;
   final ValueChanged<int> onRadius;
 
@@ -344,6 +402,7 @@ class _PlaceCard extends StatefulWidget {
     required this.place,
     required this.profileId,
     required this.onMark,
+    required this.onPickOnMap,
     required this.onRemove,
     required this.onRadius,
   });
@@ -413,7 +472,8 @@ class _PlaceCardState extends State<_PlaceCard> {
                       )
                     else
                       Text(
-                        'Radius $radius m · ditandai '
+                        'Radius $radius m · '
+                        '${marked.accuracyMeters == null ? 'dipilih di peta' : 'ditandai'} '
                         '${formatRelativeTime(marked.setAt)}',
                         style: TextStyle(
                           fontSize: 13,
@@ -481,7 +541,7 @@ class _PlaceCardState extends State<_PlaceCard> {
                   icon: const Icon(Icons.my_location_rounded, size: 20),
                   label: Text(
                     marked == null
-                        ? 'Jadikan lokasi ini ${status.label.toLowerCase().replaceFirst('di ', '')}'
+                        ? 'Jadikan lokasi ini ${placeNameOf(status)}'
                         : 'Tandai ulang di sini',
                   ),
                 ),
@@ -495,6 +555,15 @@ class _PlaceCardState extends State<_PlaceCard> {
                 ),
               ],
             ],
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: widget.onPickOnMap,
+              icon: const Icon(Icons.map_rounded, size: 20),
+              label: Text(marked == null ? 'Pilih di peta' : 'Ubah lewat peta'),
+            ),
           ),
         ],
       ),

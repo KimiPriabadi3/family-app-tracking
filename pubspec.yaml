@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.0+1
+version: 1.1.0+2
 
 environment:
   sdk: ^3.13.2
@@ -57,7 +57,8 @@ dependencies:
 
   # Geolocator cannot express Android 11+'s two-step "while in use" then
   # "all the time" flow, and this also handles the battery-optimisation prompt.
-  permission_handler: ^13.0.2
+  # Held at 12: 13.x needs compileSdk 37, which AGP 9.1 does not support yet.
+  permission_handler: ^12.0.1
 
   # No server and no paid Firebase plan, so each phone checks Firestore itself
   # on a schedule and raises the notification locally.

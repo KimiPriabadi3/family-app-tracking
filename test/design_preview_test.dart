@@ -7,6 +7,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:family_app/models/announcement.dart';
@@ -24,6 +25,7 @@ import 'package:family_app/screens/profile_select_screen.dart';
 import 'package:family_app/screens/status_screen.dart';
 import 'package:family_app/screens/tasks_screen.dart';
 import 'package:family_app/models/family_place.dart';
+import 'package:family_app/screens/place_picker_screen.dart';
 import 'package:family_app/screens/places_screen.dart';
 import 'package:family_app/screens/settings_screen.dart';
 import 'package:family_app/services/firestore_service.dart';
@@ -116,6 +118,13 @@ void main() {
   testWidgets('08 admin', (t) => preview(t, '08-admin', const AdminScreen(profileId: 'aku')));
   testWidgets('10 pengaturan', (t) => preview(t, '10-pengaturan', const SettingsScreen(profileId: 'aku')));
   testWidgets('11 tempatku', (t) => preview(t, '11-tempatku', const PlacesScreen(profileId: 'aku')));
+  testWidgets('12 pilih di peta', (t) => preview(t, '12-pilih-di-peta', const PlacePickerScreen(
+        status: PresenceStatus.office,
+        initialCenter: LatLng(-6.2349, 106.9896),
+        initialZoom: 16,
+        radiusMeters: 120,
+        color: Color(0xFF4A9DEC),
+      )));
 
   testWidgets('09 kartu keluarga gelap', (tester) async {
     tester.view.physicalSize = const Size(780, 1688);

@@ -13,6 +13,11 @@ const List<PresenceStatus> kPlaceableStatuses = [
   PresenceStatus.office,
 ];
 
+/// "rumah", "kampus", "kantor" — the place itself, for sentences like
+/// "Jadikan lokasi ini kantor".
+String placeNameOf(PresenceStatus status) =>
+    status.label.toLowerCase().replaceFirst('di ', '');
+
 /// A spot the member marked, so arriving there can set their status.
 ///
 /// These never leave the phone: the family only needs the resulting status
