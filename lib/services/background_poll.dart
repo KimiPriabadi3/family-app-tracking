@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/widgets.dart';
 import 'package:workmanager/workmanager.dart';
@@ -15,6 +17,11 @@ const String kPollUnique = 'family-poll-15m';
 /// Entry point Android calls on its own schedule, in a fresh isolate.
 @pragma('vm:entry-point')
 void notificationCallbackDispatcher() {
+  // workmanager 0.10.x does not register Dart-side plugin implementations in
+  // this isolate, so SharedPreferences (the watermarks) would throw before a
+  // single notification could be raised. "Coba sekarang" hid it by running
+  // in the foreground isolate, where registration already happened.
+  DartPluginRegistrant.ensureInitialized();
   Workmanager().executeTask((task, inputData) async {
     if (task != kPollTask) return true;
     return runFamilyPoll();

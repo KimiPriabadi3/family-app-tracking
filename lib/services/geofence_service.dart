@@ -1,8 +1,12 @@
+import 'package:geolocator/geolocator.dart';
 import 'package:native_geofence/native_geofence.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../models/family_place.dart';
 import '../models/profile.dart';
+import 'auto_status.dart';
+import 'auto_status_apply.dart';
+import 'firestore_service.dart';
 import 'geofence_callback.dart';
 import 'place_store.dart';
 
@@ -91,6 +95,61 @@ class GeofenceService {
         ),
         geofenceTriggered,
       );
+    }
+  }
+
+  /// One look at where the phone is right now, applied like a crossing.
+  ///
+  /// Android only reports crossings, and some phones' battery savers swallow
+  /// them. Checking every time the app is opened means the status is right at
+  /// least whenever someone is looking at it.
+  Future<void> checkPlacesNow(String profileId) async {
+    if (!await PlaceStore.autoStatusEnabled()) return;
+    if (await permissionLevel() == LocationPermissionLevel.none) return;
+    final places = await PlaceStore.places();
+    if (places.isEmpty) return;
+
+    try {
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 20),
+        ),
+      );
+      final me = await FirestoreService.instance.getProfile(profileId);
+      if (me == null) return;
+      final reading = readPlaces(
+        places: places,
+        latitude: position.latitude,
+        longitude: position.longitude,
+        accuracyMeters: position.accuracy,
+        currentStatus: me.status,
+      );
+      if (reading == null) return;
+      await applyPlaceEdge(
+        profileId: profileId,
+        placeStatus: reading.place,
+        edge: reading.edge,
+        origin: AutoStatusOrigin.appOpened,
+        current: me,
+      );
+    } catch (e) {
+      await PlaceStore.recordEvent('Gagal memeriksa lokasi: $e');
+    }
+  }
+
+  /// Marking a place while standing in it is the clearest arrival there is.
+  Future<void> arrivedByMarking(String profileId, PresenceStatus place) async {
+    if (!await PlaceStore.autoStatusEnabled()) return;
+    try {
+      await applyPlaceEdge(
+        profileId: profileId,
+        placeStatus: place,
+        edge: GeofenceEdge.entered,
+        origin: AutoStatusOrigin.marked,
+      );
+    } catch (e) {
+      await PlaceStore.recordEvent('Gagal mengubah status: $e');
     }
   }
 

@@ -29,6 +29,12 @@ void main() {
 
 class _NoGeofenceService implements GeofenceService {
   @override
+  Future<void> checkPlacesNow(String profileId) async {}
+
+  @override
+  Future<void> arrivedByMarking(String profileId, PresenceStatus place) async {}
+
+  @override
   Future<void> init() async {}
 
   @override

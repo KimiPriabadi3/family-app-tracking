@@ -15,6 +15,7 @@ import '../models/profile.dart';
 class PlaceStore {
   static const _placesKey = 'places_json';
   static const _autoKey = 'auto_status_enabled';
+  static const _lastEventKey = 'auto_status_last_event';
 
   static Future<SharedPreferences> get _prefs async {
     final prefs = await SharedPreferences.getInstance();
@@ -70,11 +71,41 @@ class PlaceStore {
   static Future<void> setAutoStatusEnabled(bool enabled) async =>
       (await _prefs).setBool(_autoKey, enabled);
 
+  /// The last thing automatic status did, or failed to do, in plain words.
+  ///
+  /// Background work fails silently by nature, and nobody can attach a
+  /// debugger to Bunda's phone. Showing this on the Tempatku screen turns
+  /// "it doesn't work" into something that can actually be diagnosed.
+  static Future<void> recordEvent(String text, {DateTime? at}) async {
+    await (await _prefs).setString(
+      _lastEventKey,
+      jsonEncode({
+        'at': (at ?? DateTime.now()).millisecondsSinceEpoch,
+        'text': text,
+      }),
+    );
+  }
+
+  static Future<({DateTime at, String text})?> lastEvent() async {
+    final raw = (await _prefs).getString(_lastEventKey);
+    if (raw == null) return null;
+    try {
+      final decoded = jsonDecode(raw) as Map<String, dynamic>;
+      return (
+        at: DateTime.fromMillisecondsSinceEpoch(decoded['at'] as int),
+        text: decoded['text'] as String,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// Switching profiles on a shared phone must not leave the previous member's
   /// places behind.
   static Future<void> clear() async {
     final prefs = await _prefs;
     await prefs.remove(_placesKey);
     await prefs.remove(_autoKey);
+    await prefs.remove(_lastEventKey);
   }
 }

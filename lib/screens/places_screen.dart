@@ -32,6 +32,7 @@ class _PlacesScreenState extends State<PlacesScreen> with WidgetsBindingObserver
   bool _autoEnabled = false;
   LocationPermissionLevel _permission = LocationPermissionLevel.none;
   bool _busy = false;
+  ({DateTime at, String text})? _lastEvent;
 
   @override
   void initState() {
@@ -57,11 +58,13 @@ class _PlacesScreenState extends State<PlacesScreen> with WidgetsBindingObserver
     final places = await PlaceStore.places();
     final auto = await PlaceStore.autoStatusEnabled();
     final permission = await GeofenceService.instance.permissionLevel();
+    final lastEvent = await PlaceStore.lastEvent();
     if (!mounted) return;
     setState(() {
       _places = places;
       _autoEnabled = auto;
       _permission = permission;
+      _lastEvent = lastEvent;
     });
   }
 
@@ -76,6 +79,7 @@ class _PlacesScreenState extends State<PlacesScreen> with WidgetsBindingObserver
     await PlaceStore.setAutoStatusEnabled(granted);
     if (granted) {
       await GeofenceService.instance.syncGeofences(widget.profileId);
+      await GeofenceService.instance.checkPlacesNow(widget.profileId);
     }
     await _load();
   }
@@ -170,11 +174,16 @@ class _PlacesScreenState extends State<PlacesScreen> with WidgetsBindingObserver
         ),
       );
       await GeofenceService.instance.syncGeofences(widget.profileId);
+      // You are standing in it, so this is an arrival: don't make the member
+      // leave and come back before anything happens.
+      await GeofenceService.instance.arrivedByMarking(widget.profileId, status);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(
-          '${status.label} ditandai. Statusmu akan berubah sendiri kalau kamu '
-          'sampai di sini.',
+          _autoEnabled
+              ? '${status.label} ditandai, dan statusmu sekarang ${status.label}.'
+              : '${status.label} ditandai. Nyalakan Status otomatis supaya '
+                  'statusmu berubah sendiri.',
         ),
       ));
     } finally {
@@ -290,7 +299,9 @@ class _PlacesScreenState extends State<PlacesScreen> with WidgetsBindingObserver
             children: [
               SoftCard(
                 padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: SwitchListTile(
+                child: Column(
+                  children: [
+                SwitchListTile(
                   title: Text(
                     'Status otomatis',
                     style: TextStyle(
@@ -309,6 +320,33 @@ class _PlacesScreenState extends State<PlacesScreen> with WidgetsBindingObserver
                   ),
                   value: _autoEnabled,
                   onChanged: _toggleAuto,
+                ),
+                if (_autoEnabled)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.history_rounded,
+                            size: 16, color: scheme.onSurfaceVariant),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _lastEvent == null
+                                ? 'Belum ada kejadian terdeteksi'
+                                : 'Terakhir: ${_lastEvent!.text} · '
+                                    '${formatRelativeTime(_lastEvent!.at)}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              height: 1.4,
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  ],
                 ),
               ),
               if (needsPermission)

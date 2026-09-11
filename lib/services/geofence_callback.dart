@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/widgets.dart';
 import 'package:native_geofence/native_geofence.dart';
@@ -5,7 +7,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/profile.dart';
 import 'auto_status.dart';
+import 'auto_status_apply.dart';
 import 'firestore_service.dart';
+import 'place_store.dart';
 import 'profile_session.dart';
 
 /// Ignore a repeat event for the same place within this window.
@@ -21,6 +25,11 @@ const Duration _debounce = Duration(seconds: 90);
 @pragma('vm:entry-point')
 Future<void> geofenceTriggered(GeofenceCallbackParams params) async {
   WidgetsFlutterBinding.ensureInitialized();
+  // native_geofence's dispatcher does not do this, and without it every
+  // plugin with a Dart-side implementation — SharedPreferences first among
+  // them — throws MissingPluginException in this isolate. That silently
+  // killed every crossing in 1.1.0.
+  DartPluginRegistrant.ensureInitialized();
 
   try {
     if (Firebase.apps.isEmpty) {
@@ -60,28 +69,18 @@ Future<void> geofenceTriggered(GeofenceCallbackParams params) async {
     }
 
     final me = await FirestoreService.instance.getProfile(profileId);
-    if (me == null) return;
-
-    final next = decideAutoStatus(
-      currentStatus: me.status,
-      currentSource: me.statusSource,
-      statusUpdatedAt: me.statusUpdatedAt,
+    await applyPlaceEdge(
+      profileId: profileId,
       placeStatus: placeStatus,
       edge: edge,
-      now: now,
+      origin: AutoStatusOrigin.background,
+      current: me,
     );
-    if (next == null) return;
-
-    // An automatic change clears the note: "otw pulang, telat 30 menit" is
-    // wrong the moment you actually arrive.
-    await FirestoreService.instance
-        .updateStatus(profileId, next, note: null, source: StatusSource.auto)
-        .timeout(const Duration(seconds: 10));
 
     // Free of charge, since the OS already woke us with a fix: refresh the map
-    // position. This is the first time the map gets anything at all while the
-    // app is closed.
-    if (me.locationSharingEnabled) {
+    // position. This is the only time the map gets anything while the app is
+    // closed.
+    if (me != null && me.locationSharingEnabled) {
       final location = params.location;
       if (location != null) {
         await FirestoreService.instance
@@ -89,9 +88,12 @@ Future<void> geofenceTriggered(GeofenceCallbackParams params) async {
             .timeout(const Duration(seconds: 10));
       }
     }
-  } catch (_) {
-    // A missed crossing is not worth crashing a background isolate over.
-    // Firestore's offline queue will flush a pending write later anyway.
+  } catch (e) {
+    // Never crash a background isolate over a missed crossing, but leave a
+    // trace the member can read on the Tempatku screen.
+    try {
+      await PlaceStore.recordEvent('Gagal di latar belakang: $e');
+    } catch (_) {}
   }
 }
 

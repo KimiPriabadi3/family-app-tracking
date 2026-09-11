@@ -63,6 +63,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Future<void> _resume() async {
     await LocationService.instance.reArmIfEnabled(widget.profileId);
     await GeofenceService.instance.syncGeofences(widget.profileId);
+    await GeofenceService.instance.checkPlacesNow(widget.profileId);
   }
 
   void _openTabFromNotification() {
