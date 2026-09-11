@@ -24,7 +24,7 @@ class FamilyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Family App Tracking',
+      title: 'My Family',
       // Ships as a debug build, and the corner ribbon has no business on a
       // phone the family actually uses.
       debugShowCheckedModeBanner: false,

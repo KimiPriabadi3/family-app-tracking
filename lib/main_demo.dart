@@ -118,7 +118,7 @@ class _FamilyAppDemoState extends State<FamilyAppDemo> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Family App Tracking — demo',
+      title: 'My Family — demo',
       debugShowCheckedModeBanner: false,
       theme: buildAppTheme(brightness: Brightness.light),
       darkTheme: buildAppTheme(brightness: Brightness.dark),
